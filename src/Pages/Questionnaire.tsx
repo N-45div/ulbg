@@ -9,6 +9,8 @@ import { ThemeContext } from "../context/ThemeContext";
 import { useScore } from "../context/ScoreContext";
 import { useNavigate } from "react-router-dom";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
+import Shepherd from "shepherd.js";
+import "shepherd.js/dist/css/shepherd.css";
 
 interface DivWithDropdownProps {
   textValue: string;
@@ -301,7 +303,7 @@ const Questionnaire = () => {
             ...prev,
             [index]: {
               ...prev[index],
-              requiredScored: false,
+              requiredScored: false,ch
               requiredCorrect: false,
             },
           }));
@@ -467,11 +469,89 @@ const Questionnaire = () => {
     checkForBonus();
   }, [selectedTypes, requiredQuestions, checkForBonus]);
 
+  // Add Shepherd.js tour for the Questionnaire tab
+  useEffect(() => {
+    const tour = new Shepherd.Tour({
+      defaultStepOptions: {
+        cancelIcon: { enabled: true },
+        classes: "shadow-md bg-purple-dark",
+        scrollTo: { behavior: "smooth", block: "center" },
+      },
+      useModalOverlay: true,
+      confirmCancel: false,
+      tourName: `questionnaire-tour-${Date.now()}`,
+    });
+
+    // Step 3: Customize the Questionnaire
+    tour.addStep({
+      id: "customize-questionnaire",
+      text: `
+        <div class="welcome-message">
+          <strong class="welcome-title">Welcome to the Questionnaire forge!</strong>
+          <p class="welcome-text">Here, you craft the questions that feed your placeholders.</p>
+          <p class="mission-text">See the default question text for [Employer Name]? Go ahead and tweak it if you desire—like 'Provide the name of the Employer:'</p>
+        </div>
+      `,
+      attachTo: { element: ".max-w-4xl", on: "top" },
+      buttons: [
+        {
+          text: "Next →",
+          action: () => {
+            // Simulate editing the question text
+            const input = document.querySelector('input[value="Employer Name"]') as HTMLInputElement;
+            if (input) {
+              input.value = "Provide the name of the Employer:";
+              input.dispatchEvent(new Event("change", { bubbles: true }));
+            }
+            tour.next();
+          },
+        },
+      ],
+    });
+
+    // Step 4: Explore Question Types
+    tour.addStep({
+      id: "explore-question-types",
+      text: `
+        Check this out: the question type is set to 'Text' by default—perfect for a name like [Employer Name]. But you’re the boss! You can switch it to 'Number' for things like salaries, or 'Radio Button' for yes/no options. For now, 'Text' is spot-on. Leave it as is and let’s move forward!
+      `,
+      attachTo: { element: ".relative button", on: "bottom" },
+      buttons: [{ text: "Next →", action: tour.next }],
+    });
+
+    // Step 5: Test It in Live Document Generation
+    tour.addStep({
+      id: "test-live-generation",
+      text: `
+        Time to see your automation in action! Click 'Live Document Generation' to test your work. On this page, find the answer field tied to [Employer Name]. Type in 'John Doe' as the employer’s name, then hit 'Next' to witness the magic. Watch as [Employer Name] transforms into 'John Doe' in the document!
+      `,
+      attachTo: { element: "#Live-Document-Generation-button", on: "left" },
+      buttons: [
+        {
+          text: "Go to Live Generation →",
+          action: () => {
+            navigate("/Live_Generation");
+            tour.complete();
+          },
+        },
+      ],
+    });
+
+    // Start the tour if there are questions to display
+    if (uniqueQuestions.length > 0) {
+      tour.start();
+    }
+
+    return () => {
+      tour.complete();
+    };
+  }, [uniqueQuestions, navigate]);
+
   const handleTypeChange = (index: number, type: string) => {
     const newTypes = [...selectedTypes];
     newTypes[index] = type;
     setSelectedTypes(newTypes);
-    sessionStorage.setItem("selectedQuestionTypes", JSON.stringify(newTypes)); // Consistent key
+    sessionStorage.setItem("selectedQuestionTypes", JSON.stringify(newTypes));
     scoreTypeSelection(index, type);
 
     const textValue = uniqueQuestions[index];
