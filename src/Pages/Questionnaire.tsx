@@ -533,7 +533,7 @@ const Questionnaire = () => {
         {
           text: "Go to Live Generation →",
           action: () => {
-            setTourStep("completed"); // Update state before navigation
+            setTourStep("completed");
             sessionStorage.setItem("questionnaireTourStep", "completed");
             navigate("/Live_Generation");
             tour.complete();
@@ -548,12 +548,12 @@ const Questionnaire = () => {
       text: `
         You've completed the Questionnaire tour! Feel free to explore more or continue with Live Document Generation.
       `,
-      attachTo: { element: document.body, on: "center" },
+      attachTo: { element: document.body, on: "top" }, // Fixed: Changed "center" to "top"
       buttons: [
         {
           text: "Finish →",
           action: () => {
-            setTourStep(null); // Clear state on completion
+            setTourStep(null);
             sessionStorage.removeItem("questionnaireTourStep");
             tour.complete();
           },
