@@ -222,6 +222,9 @@ const Questionnaire = () => {
   const { updateQuestion, determineQuestionType, findPlaceholderByValue } = useQuestionEditContext();
   const navigate = useNavigate();
 
+  // Add state to track the current tour step
+  const [tourStep, setTourStep] = useState<string | null>(sessionStorage.getItem("questionnaireTourStep") || "customize-questionnaire");
+
   const followUpQuestions = [
     "What's the probation period length?",
     "What's the probation extension length?",
@@ -281,37 +284,37 @@ const Questionnaire = () => {
   );
 
   const scoreRequiredStatus = useCallback(
-  (index: number, isRequired: boolean) => {
-    if (isRequired) {
-      if (!scoredQuestions[index]?.requiredScored) {
-        updateQuestionnaireScore(2);
-        showFeedback(2);
-        setScoredQuestions((prev) => ({
-          ...prev,
-          [index]: {
-            ...prev[index],
-            requiredScored: true,
-            requiredCorrect: true,
-          },
-        }));
+    (index: number, isRequired: boolean) => {
+      if (isRequired) {
+        if (!scoredQuestions[index]?.requiredScored) {
+          updateQuestionnaireScore(2);
+          showFeedback(2);
+          setScoredQuestions((prev) => ({
+            ...prev,
+            [index]: {
+              ...prev[index],
+              requiredScored: true,
+              requiredCorrect: true,
+            },
+          }));
+        }
+      } else {
+        if (scoredQuestions[index]?.requiredScored) {
+          updateQuestionnaireScore(-2);
+          showFeedback(-2);
+          setScoredQuestions((prev) => ({
+            ...prev,
+            [index]: {
+              ...prev[index],
+              requiredScored: false,
+              requiredCorrect: false,
+            },
+          }));
+        }
       }
-    } else {
-      if (scoredQuestions[index]?.requiredScored) {
-        updateQuestionnaireScore(-2);
-        showFeedback(-2);
-        setScoredQuestions((prev) => ({
-          ...prev,
-          [index]: {
-            ...prev[index],
-            requiredScored: false, // Added comma here
-            requiredCorrect: false,
-          },
-        }));
-      }
-    }
-  },
-  [updateQuestionnaireScore, scoredQuestions]
-);
+    },
+    [updateQuestionnaireScore, scoredQuestions]
+  );
 
   const checkForBonus = useCallback(() => {
     if (uniqueQuestions.length === 0 || bonusAwarded) return;
@@ -530,6 +533,8 @@ const Questionnaire = () => {
         {
           text: "Go to Live Generation →",
           action: () => {
+            setTourStep("completed"); // Update state before navigation
+            sessionStorage.setItem("questionnaireTourStep", "completed");
             navigate("/Live_Generation");
             tour.complete();
           },
@@ -537,15 +542,35 @@ const Questionnaire = () => {
       ],
     });
 
-    // Start the tour if there are questions to display
-    if (uniqueQuestions.length > 0) {
+    // Step 6: Resume after navigation (optional step for completeness)
+    tour.addStep({
+      id: "completed",
+      text: `
+        You've completed the Questionnaire tour! Feel free to explore more or continue with Live Document Generation.
+      `,
+      attachTo: { element: document.body, on: "center" },
+      buttons: [
+        {
+          text: "Finish →",
+          action: () => {
+            setTourStep(null); // Clear state on completion
+            sessionStorage.removeItem("questionnaireTourStep");
+            tour.complete();
+          },
+        },
+      ],
+    });
+
+    // Start or resume the tour based on the tourStep state
+    if (tourStep && uniqueQuestions.length > 0) {
       tour.start();
+      tour.show(tourStep);
     }
 
     return () => {
       tour.complete();
     };
-  }, [uniqueQuestions, navigate]);
+  }, [tourStep, uniqueQuestions, navigate]);
 
   const handleTypeChange = (index: number, type: string) => {
     const newTypes = [...selectedTypes];
