@@ -10,7 +10,7 @@ import EmploymentAgreement from "../utils/EmploymentAgreement";
 import { determineQuestionType } from "../utils/questionTypeUtils";
 import { ThemeContext } from "../context/ThemeContext";
 import AIAnalysisPanel from "../components/AIAnalysisPanel";
-import Shepherd from "shepherd.js";
+import shepherd from "shepherd.js";
 import "shepherd.js/dist/css/shepherd.css";
 
 const icons = [
@@ -28,7 +28,7 @@ const LevelTwoPart_Two_Demo = () => {
   const { highlightedTexts, addHighlightedText } = useHighlightedText();
   const { selectedTypes, setSelectedTypes } = useQuestionType();
   const documentRef = useRef<HTMLDivElement>(null);
-  const tourRef = useRef<Shepherd.Tour | null>(null); // Store the tour instance
+  const tourRef = useRef<shepherd.Tour | null>(null); // Store the tour instance
 
   useEffect(() => {
     console.log("LevelTwoPart_Two_Demo - Rendering at:", location.pathname);
