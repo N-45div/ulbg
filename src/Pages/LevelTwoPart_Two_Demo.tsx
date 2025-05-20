@@ -249,7 +249,7 @@ const LevelTwoPart_Two_Demo = () => {
     }
   };
 
-  // State to track if the tour should resume after returning from Questionnaire
+  // State to track the current tour step
   const [tourStep, setTourStep] = useState<string | null>(sessionStorage.getItem("tourStep") || "welcome");
 
   useEffect(() => {
@@ -346,6 +346,7 @@ const LevelTwoPart_Two_Demo = () => {
         {
           text: "Go to Questionnaire →",
           action: () => {
+            setTourStep("return-from-questionnaire-employer-name"); // Update state
             sessionStorage.setItem("tourStep", "return-from-questionnaire-employer-name");
             navigate("/Questionnaire");
           },
@@ -471,6 +472,7 @@ const LevelTwoPart_Two_Demo = () => {
         {
           text: "Go to Questionnaire →",
           action: () => {
+            setTourStep("return-from-questionnaire-employee-name-agreement-date");
             sessionStorage.setItem("tourStep", "return-from-questionnaire-employee-name-agreement-date");
             navigate("/Questionnaire");
           },
@@ -546,6 +548,7 @@ const LevelTwoPart_Two_Demo = () => {
         {
           text: "Go to Questionnaire →",
           action: () => {
+            setTourStep("return-from-questionnaire-small-condition");
             sessionStorage.setItem("tourStep", "return-from-questionnaire-small-condition");
             navigate("/Questionnaire");
           },
@@ -622,6 +625,7 @@ const LevelTwoPart_Two_Demo = () => {
         {
           text: "Go to Questionnaire →",
           action: () => {
+            setTourStep("return-from-questionnaire-big-condition");
             sessionStorage.setItem("tourStep", "return-from-questionnaire-big-condition");
             navigate("/Questionnaire");
           },
@@ -638,6 +642,7 @@ const LevelTwoPart_Two_Demo = () => {
         {
           text: "Finish →",
           action: () => {
+            setTourStep(null);
             sessionStorage.removeItem("tourStep");
             tour.complete();
           },
