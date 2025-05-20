@@ -2,7 +2,7 @@ import { FaPenToSquare } from "react-icons/fa6";
 import { TbSettingsMinus, TbSettingsPlus } from "react-icons/tb";
 import { ImLoop2 } from "react-icons/im";
 import { useState, useContext, useEffect, useRef } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import { useHighlightedText } from "../context/HighlightedTextContext";
 import { useQuestionType } from "../context/QuestionTypeContext";
@@ -22,6 +22,7 @@ const icons = [
 
 const LevelTwoPart_Two_Demo = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const { isDarkMode } = useContext(ThemeContext);
   const [tooltip, setTooltip] = useState<string | null>(null);
   const { highlightedTexts, addHighlightedText } = useHighlightedText();
@@ -89,10 +90,6 @@ const LevelTwoPart_Two_Demo = () => {
     }
 
     if (label === "Edit PlaceHolder") {
-      // if (!(selectedText.startsWith("[") && selectedText.endsWith("]"))) {
-      //   console.log("Invalid Edit Placeholder selection:", selectedText);
-      //   return;
-      // }
       if (highlightedTexts.includes(textWithoutBrackets)) {
         console.log("Placeholder already highlighted:", textWithoutBrackets);
         alert("This placeholder has already been added!");
@@ -228,6 +225,33 @@ const LevelTwoPart_Two_Demo = () => {
     }
   };
 
+  // Function to simulate clicking the Edit Placeholder button
+  const simulateEditPlaceholderClick = () => {
+    const editPlaceholderButton = document.querySelector("#edit-placeholder") as HTMLButtonElement;
+    if (editPlaceholderButton) {
+      editPlaceholderButton.click();
+    }
+  };
+
+  // Function to simulate clicking the Small Condition button
+  const simulateSmallConditionClick = () => {
+    const smallConditionButton = document.querySelector("#icon-small-condition") as HTMLButtonElement;
+    if (smallConditionButton) {
+      smallConditionButton.click();
+    }
+  };
+
+  // Function to simulate clicking the Big Condition button
+  const simulateBigConditionClick = () => {
+    const bigConditionButton = document.querySelector("#icon-big-condition") as HTMLButtonElement;
+    if (bigConditionButton) {
+      bigConditionButton.click();
+    }
+  };
+
+  // State to track if the tour should resume after returning from Questionnaire
+  const [tourStep, setTourStep] = useState<string | null>(sessionStorage.getItem("tourStep") || "welcome");
+
   useEffect(() => {
     const tour = new Shepherd.Tour({
       defaultStepOptions: {
@@ -240,6 +264,7 @@ const LevelTwoPart_Two_Demo = () => {
       tourName: `level-two-part-two-demo-${Date.now()}`,
     });
 
+    // Step 1: Welcome
     tour.addStep({
       id: "welcome",
       text: `
@@ -254,16 +279,18 @@ const LevelTwoPart_Two_Demo = () => {
       buttons: [{ text: "Start Learning →", action: tour.next }],
     });
 
+    // Step 1.1: Introduce Placeholders
     tour.addStep({
       id: "placeholders",
-      text: "Behold your <strong>employment agreement!</strong> Notice those bits wrapped in square brackets, like <strong> [Employer Name] </strong>? Those are placeholders—your secret weapons for automation. Any text inside <strong> [square brackets] </strong> is a placeholder waiting to be customized.<br> Let's start with [Employer Name] by highlighting it and verifying your selection. Then, click on the 'Edit Placeholder' button to automate your placeholder. Hurray! A placeholder has been created for you.",
+      text: "Behold your <strong>employment agreement!</strong> Notice those bits wrapped in square brackets, like <strong>[Employer Name]</strong>? Those are placeholders—your secret weapons for automation. Any text inside <strong>[square brackets]</strong> is a placeholder waiting to be customized.<br> Let's start with [Employer Name] by highlighting it and verifying your selection. Then, click on the 'Edit Placeholder' button to automate your placeholder.",
       attachTo: { element: document.body, on: "bottom-start" },
       buttons: [{ text: "Next →", action: tour.next }],
     });
 
+    // Step 1.2: Select [Employer Name]
     tour.addStep({
       id: "select-employer-name",
-      text: "Select [Employer Name] in the 'PARTIES' section (under 'Employer:') without spaces before or after the square brackets [].",
+      text: "Select <strong>[Employer Name]</strong> in the 'PARTIES' section (under 'Employer:') without spaces before or after the square brackets [].",
       attachTo: {
         element: (document.querySelector("#employer-name-placeholder") as HTMLElement | null) || document.body,
         on: "bottom",
@@ -286,34 +313,349 @@ const LevelTwoPart_Two_Demo = () => {
       ],
     });
 
+    // Step 1.3: Click Edit Placeholder for [Employer Name]
     tour.addStep({
-      id: "edit-placeholder",
-      text: "Now click on the <strong> Edit Placeholder </strong> to make changes.",
+      id: "edit-placeholder-employer-name",
+      text: "Now click on the <strong>Edit Placeholder</strong> button to automate [Employer Name].",
       attachTo: { element: "#edit-placeholder", on: "bottom" },
-      buttons: [{ text: "Next →", action: tour.next }],
+      buttons: [
+        {
+          text: "Next →",
+          action: () => {
+            simulateEditPlaceholderClick();
+            tour.next();
+          },
+        },
+      ],
     });
 
+    // Step 1.4: Confirm Placeholder Automation for [Employer Name]
     tour.addStep({
-      id: "selected-placeholder",
-      text: "Your selected placeholder is now visible here 📌 and ready for editing.",
+      id: "selected-placeholder-employer-name",
+      text: "Your selected placeholder <strong>[Employer Name]</strong> is now visible here 📌 and ready for editing.",
       attachTo: { element: "#selected-placeholder0", on: "bottom" },
       buttons: [{ text: "Next →", action: tour.next }],
     });
 
+    // Step 1.5: Navigate to Questionnaire for [Employer Name]
     tour.addStep({
-      id: "questionnaire",
-      text: "Now that you've selected the [Employer Name] placeholder. This is where the magic begins. To bring it to life, head to the 'Questionnaire' page. Click <strong> 'Questionnaire' </strong> in the menu bar which would take you to the page, and let's build the question that powers this placeholder!",
+      id: "questionnaire-employer-name",
+      text: "Now that you've selected the [Employer Name] placeholder, let's bring it to life. Head to the 'Questionnaire' page to draft a question for this placeholder. Click <strong>'Questionnaire'</strong> in the menu bar to proceed!",
       attachTo: { element: "#Questionnaire-button", on: "right" },
-      buttons: [{ text: "Done", action: tour.complete }],
+      buttons: [
+        {
+          text: "Go to Questionnaire →",
+          action: () => {
+            sessionStorage.setItem("tourStep", "return-from-questionnaire-employer-name");
+            navigate("/Questionnaire");
+          },
+        },
+      ],
     });
 
-    tour.start();
-    window.history.replaceState({}, document.title, location.pathname);
+    // Step 1.6: AI Feedback for [Employer Name] (after returning from Questionnaire)
+    tour.addStep({
+      id: "return-from-questionnaire-employer-name",
+      text: "Great job! You successfully automated the <strong>[Employer Name]</strong> placeholder. Let's move on to the next placeholder.",
+      attachTo: { element: "#selected-placeholder0", on: "bottom" },
+      buttons: [{ text: "Next →", action: tour.next }],
+    });
 
+    // Step 2: Automating Placeholders - [Employee Name] and [Agreement Date]
+    // Step 2.1: Introduce [Employee Name]
+    tour.addStep({
+      id: "introduce-employee-name",
+      text: "Next, let's automate another placeholder. Select <strong>[Employee Name]</strong> in the 'PARTIES' section (under 'Employee:') without spaces before or after the square brackets [].",
+      attachTo: {
+        element: (document.querySelector("#employee-name-placeholder") as HTMLElement | null) || document.body,
+        on: "bottom",
+      },
+      buttons: [
+        {
+          text: "Verify Selection ✅",
+          action: function () {
+            const selection = window.getSelection();
+            const selectedText = selection ? selection.toString().trim() : "";
+            const employeeNamePlaceholder = "[Employee Name]";
+
+            if (selectedText === employeeNamePlaceholder) {
+              tour.next();
+            } else {
+              alert("⚠️ Please select [Employee Name] exactly as shown in the 'PARTIES' section.");
+            }
+          },
+        },
+      ],
+    });
+
+    // Step 2.2: Click Edit Placeholder for [Employee Name]
+    tour.addStep({
+      id: "edit-placeholder-employee-name",
+      text: "Now click on the <strong>Edit Placeholder</strong> button to automate [Employee Name].",
+      attachTo: { element: "#edit-placeholder", on: "bottom" },
+      buttons: [
+        {
+          text: "Next →",
+          action: () => {
+            simulateEditPlaceholderClick();
+            tour.next();
+          },
+        },
+      ],
+    });
+
+    // Step 2.3: Confirm Placeholder Automation for [Employee Name]
+    tour.addStep({
+      id: "selected-placeholder-employee-name",
+      text: "Your selected placeholder <strong>[Employee Name]</strong> is now visible here 📌 and ready for editing.",
+      attachTo: { element: "#selected-placeholder1", on: "bottom" },
+      buttons: [{ text: "Next →", action: tour.next }],
+    });
+
+    // Step 2.4: Introduce [Agreement Date]
+    tour.addStep({
+      id: "introduce-agreement-date",
+      text: "Let's automate one more placeholder. Select <strong>[Agreement Date]</strong> in the 'PARTIES' section (at the end of the section) without spaces before or after the square brackets [].",
+      attachTo: {
+        element: (document.querySelector("#agreement-date-placeholder") as HTMLElement | null) || document.body,
+        on: "bottom",
+      },
+      buttons: [
+        {
+          text: "Verify Selection ✅",
+          action: function () {
+            const selection = window.getSelection();
+            const selectedText = selection ? selection.toString().trim() : "";
+            const agreementDatePlaceholder = "[Agreement Date]";
+
+            if (selectedText === agreementDatePlaceholder) {
+              tour.next();
+            } else {
+              alert("⚠️ Please select [Agreement Date] exactly as shown in the 'PARTIES' section.");
+            }
+          },
+        },
+      ],
+    });
+
+    // Step 2.5: Click Edit Placeholder for [Agreement Date]
+    tour.addStep({
+      id: "edit-placeholder-agreement-date",
+      text: "Now click on the <strong>Edit Placeholder</strong> button to automate [Agreement Date].",
+      attachTo: { element: "#edit-placeholder", on: "bottom" },
+      buttons: [
+        {
+          text: "Next →",
+          action: () => {
+            simulateEditPlaceholderClick();
+            tour.next();
+          },
+        },
+      ],
+    });
+
+    // Step 2.6: Confirm Placeholder Automation for [Agreement Date]
+    tour.addStep({
+      id: "selected-placeholder-agreement-date",
+      text: "Your selected placeholder <strong>[Agreement Date]</strong> is now visible here 📌 and ready for editing.",
+      attachTo: { element: "#selected-placeholder2", on: "bottom" },
+      buttons: [{ text: "Next →", action: tour.next }],
+    });
+
+    // Step 2.7: Navigate to Questionnaire for [Employee Name] and [Agreement Date]
+    tour.addStep({
+      id: "questionnaire-employee-name-agreement-date",
+      text: "You've selected <strong>[Employee Name]</strong> and <strong>[Agreement Date]</strong>. Let's draft questions for these placeholders. Head to the 'Questionnaire' page by clicking <strong>'Questionnaire'</strong> in the menu bar.",
+      attachTo: { element: "#Questionnaire-button", on: "right" },
+      buttons: [
+        {
+          text: "Go to Questionnaire →",
+          action: () => {
+            sessionStorage.setItem("tourStep", "return-from-questionnaire-employee-name-agreement-date");
+            navigate("/Questionnaire");
+          },
+        },
+      ],
+    });
+
+    // Step 2.8: AI Feedback for [Employee Name] and [Agreement Date]
+    tour.addStep({
+      id: "return-from-questionnaire-employee-name-agreement-date",
+      text: "Great job! You successfully automated the placeholders <strong>[Employee Name]</strong> and <strong>[Agreement Date]</strong>! Let's move on to automating conditions.",
+      attachTo: { element: "#selected-placeholder2", on: "bottom" },
+      buttons: [{ text: "Next →", action: tour.next }],
+    });
+
+    // Step 3: Automating a Small Condition - {Overtime Pay Clause}
+    // Step 3.1: Introduce Small Condition
+    tour.addStep({
+      id: "introduce-small-condition",
+      text: "Now let's automate a small condition. Conditions wrapped in <strong>{curly braces}</strong> can be toggled on or off. Select <strong>{The Employee is entitled to overtime pay for authorized overtime work.}</strong> in the 'WORKING HOURS' section.",
+      attachTo: {
+        element: (document.querySelector("#employment-agreement-working-hours") as HTMLElement | null) || document.body,
+        on: "bottom",
+      },
+      buttons: [
+        {
+          text: "Verify Selection ✅",
+          action: function () {
+            const selection = window.getSelection();
+            const selectedText = selection ? selection.toString().trim() : "";
+            const overtimePayClause = "{The Employee is entitled to overtime pay for authorized overtime work.}";
+
+            if (selectedText === overtimePayClause) {
+              tour.next();
+            } else {
+              alert("⚠️ Please select {The Employee is entitled to overtime pay for authorized overtime work.} exactly as shown in the 'WORKING HOURS' section.");
+            }
+          },
+        },
+      ],
+    });
+
+    // Step 3.2: Click Small Condition Button
+    tour.addStep({
+      id: "small-condition-button",
+      text: "Now click on the <strong>Small Condition</strong> button to automate this condition.",
+      attachTo: { element: "#icon-small-condition", on: "bottom" },
+      buttons: [
+        {
+          text: "Next →",
+          action: () => {
+            simulateSmallConditionClick();
+            tour.next();
+          },
+        },
+      ],
+    });
+
+    // Step 3.3: Confirm Small Condition Automation
+    tour.addStep({
+      id: "selected-small-condition",
+      text: "Your selected condition <strong>{The Employee is entitled to overtime pay for authorized overtime work.}</strong> is now visible here 📌 and ready for editing.",
+      attachTo: { element: "#selected-placeholder3", on: "bottom" },
+      buttons: [{ text: "Next →", action: tour.next }],
+    });
+
+    // Step 3.4: Navigate to Questionnaire for Small Condition
+    tour.addStep({
+      id: "questionnaire-small-condition",
+      text: "Let's draft a question for this condition. Head to the 'Questionnaire' page by clicking <strong>'Questionnaire'</strong> in the menu bar to create a question like 'Would the employee be entitled to overtime pay?'.",
+      attachTo: { element: "#Questionnaire-button", on: "right" },
+      buttons: [
+        {
+          text: "Go to Questionnaire →",
+          action: () => {
+            sessionStorage.setItem("tourStep", "return-from-questionnaire-small-condition");
+            navigate("/Questionnaire");
+          },
+        },
+      ],
+    });
+
+    // Step 3.5: AI Feedback for Small Condition
+    tour.addStep({
+      id: "return-from-questionnaire-small-condition",
+      text: "Good job automating the small condition <strong>{The Employee is entitled to overtime pay for authorized overtime work.}</strong>! Let's move on to a big condition.",
+      attachTo: { element: "#selected-placeholder3", on: "bottom" },
+      buttons: [{ text: "Next →", action: tour.next }],
+    });
+
+    // Step 4: Automating a Big Condition - (Probationary Period Clause)
+    // Step 4.1: Introduce Big Condition
+    tour.addStep({
+      id: "introduce-big-condition",
+      text: "Now let's automate a big condition. Conditions wrapped in <strong>(parentheses)</strong> can include entire sections. Select the entire <strong>(PROBATIONARY PERIOD...)</strong> section, including the heading and paragraph, under the 'PROBATIONARY PERIOD' section.",
+      attachTo: {
+        element: (document.querySelector("#employment-agreement-probationary-period") as HTMLElement | null) || document.body,
+        on: "bottom",
+      },
+      buttons: [
+        {
+          text: "Verify Selection ✅",
+          action: function () {
+            const selection = window.getSelection();
+            const selectedText = selection ? selection.toString().trim() : "";
+            const probationaryPeriodClauseStart = "(PROBATIONARY PERIOD";
+            const probationaryPeriodClauseEnd = "confirmed in their role.)";
+
+            if (selectedText.startsWith(probationaryPeriodClauseStart) && selectedText.endsWith(probationaryPeriodClauseEnd)) {
+              tour.next();
+            } else {
+              alert("⚠️ Please select the entire (PROBATIONARY PERIOD...) section, including the heading and paragraph.");
+            }
+          },
+        },
+      ],
+    });
+
+    // Step 4.2: Click Big Condition Button
+    tour.addStep({
+      id: "big-condition-button",
+      text: "Now click on the <strong>Big Condition</strong> button to automate this section.",
+      attachTo: { element: "#icon-big-condition", on: "bottom" },
+      buttons: [
+        {
+          text: "Next →",
+          action: () => {
+            simulateBigConditionClick();
+            tour.next();
+          },
+        },
+      ],
+    });
+
+    // Step 4.3: Confirm Big Condition Automation
+    tour.addStep({
+      id: "selected-big-condition",
+      text: "Your selected condition <strong>(PROBATIONARY PERIOD...)</strong> is now visible here 📌. Notice that an additional question 'Is the clause of probationary period applicable?' has been automatically added.",
+      attachTo: { element: "#selected-placeholder4", on: "bottom" },
+      buttons: [{ text: "Next →", action: tour.next }],
+    });
+
+    // Step 4.4: Navigate to Questionnaire for Big Condition
+    tour.addStep({
+      id: "questionnaire-big-condition",
+      text: "Let's draft a question for this condition. Head to the 'Questionnaire' page by clicking <strong>'Questionnaire'</strong> in the menu bar to create a question like 'Is the clause of probationary period included?'.",
+      attachTo: { element: "#Questionnaire-button", on: "right" },
+      buttons: [
+        {
+          text: "Go to Questionnaire →",
+          action: () => {
+            sessionStorage.setItem("tourStep", "return-from-questionnaire-big-condition");
+            navigate("/Questionnaire");
+          },
+        },
+      ],
+    });
+
+    // Step 4.5: AI Feedback for Big Condition
+    tour.addStep({
+      id: "return-from-questionnaire-big-condition",
+      text: "Well done! You've automated the complex condition <strong>(PROBATIONARY PERIOD...)</strong>. You've completed the automation tasks for Level 2 Part II Demo!",
+      attachTo: { element: "#selected-placeholder4", on: "bottom" },
+      buttons: [
+        {
+          text: "Finish →",
+          action: () => {
+            sessionStorage.removeItem("tourStep");
+            tour.complete();
+          },
+        },
+      ],
+    });
+
+    // Start or resume the tour based on the tourStep state
+    if (tourStep) {
+      tour.start();
+      tour.show(tourStep);
+    }
+
+    // Cleanup on unmount
     return () => {
       tour.complete();
     };
-  }, []);
+  }, [tourStep, navigate, highlightedTexts, selectedTypes, setSelectedTypes]);
 
   return (
     <div
