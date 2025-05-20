@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { useState, useRef, useCallback, useContext,useEffect } from "react";
+import { useState, useRef, useCallback, useContext, useEffect } from "react";
 import Navbar from "../components/Navbar";
 import { documentText } from "../utils/EmploymentAgreement";
 import { useHighlightedText } from "../context/HighlightedTextContext";
@@ -9,6 +9,8 @@ import { ThemeContext } from "../context/ThemeContext";
 import { useScore } from "../context/ScoreContext";
 import { useUserAnswers } from "../context/UserAnswersContext";
 import parse, { DOMNode, Element } from "html-react-parser";
+import Shepherd from "shepherd.js";
+import "shepherd.js/dist/css/shepherd.css";
 
 // Warning Alert Component
 interface WarningAlertProps {
@@ -118,7 +120,6 @@ const Live_Generation = () => {
   const [inputErrors, setInputErrors] = useState<{ [key: string]: string }>({});
   const inputRefs = useRef<(HTMLInputElement | HTMLTextAreaElement | null)[]>([]);
   const [additionalLocations, setAdditionalLocations] = useState<string[]>([""]);
-  // const [userAnswers, setUserAnswers] = useState<{ [key: string]: string | boolean | null | { amount: string; currency: string } }>({});
   const { userAnswers, setUserAnswers } = useUserAnswers();
   const [highlightedTexts, setHighlightedTexts] = useState<string[]>([]);
   const [selectedTypes, setLocalSelectedTypes] = useState<(string | null)[]>([]);
@@ -128,24 +129,6 @@ const Live_Generation = () => {
   const [certificationMessage, setCertificationMessage] = useState("");
   const [showWarning, setShowWarning] = useState(false);
   const { questionnaireScore } = useScore();
-
-  // function initializeUserAnswers(highlightedTexts: string[], selectedTypes: (string | null)[]): { [key: string]: string | boolean | null | { amount: string; currency: string } } {
-  //   const initialAnswers: { [key: string]: string | boolean | null | { amount: string; currency: string } } = {};
-  //   highlightedTexts.forEach((text, index) => {
-  //     const { primaryValue } = determineQuestionType(text);
-  //     const type = selectedTypes[index] || "Text";
-  //     if (primaryValue) {
-  //       if (primaryValue === "What's the annual salary?") {
-  //         initialAnswers[primaryValue] = { amount: "", currency: "USD" };
-  //       } else if (primaryValue === "What is the additional work location?") {
-  //         initialAnswers[primaryValue] = "";
-  //       } else {
-  //         initialAnswers[primaryValue] = type === "Radio" ? null : "";
-  //       }
-  //     }
-  //   });
-  //   return initialAnswers;
-  // }
 
   useEffect(() => {
     const savedOrder = sessionStorage.getItem("questionOrder_2");
@@ -260,10 +243,137 @@ const Live_Generation = () => {
     setLocalSelectedTypes(reorderedSelectedTypes);
     setLocalEditedQuestions(reorderedEditedQuestions);
     setLocalRequiredQuestions(reorderedRequiredQuestions);
-
-    // const initial = initializeUserAnswers(reorderedHighlightedTexts, reorderedSelectedTypes);
-    // setUserAnswers(initial);
   }, [originalHighlightedTexts, originalSelectedTypes, originalEditedQuestions, originalRequiredQuestions]);
+
+  // Add Shepherd.js tour for the Live Document Generation tab
+  useEffect(() => {
+    const tour = new Shepherd.Tour({
+      defaultStepOptions: {
+        cancelIcon: { enabled: true },
+        classes: "shadow-md bg-purple-dark",
+        scrollTo: { behavior: "smooth", block: "center" },
+      },
+      useModalOverlay: true,
+      confirmCancel: false,
+      tourName: `live-generation-tour-${Date.now()}`,
+    });
+
+    // Find the index of the [Employer Name] question
+    const employerNameIndex = highlightedTexts.findIndex(
+      (text) => text === "Employer Name" || determineQuestionType(text).primaryValue === "Employer Name"
+    );
+
+    if (employerNameIndex === -1) {
+      // If [Employer Name] is not found, complete the tour to avoid breaking the flow
+      tour.complete();
+      return;
+    }
+
+    // Step 5: Test It in Live Document Generation (Continued)
+    tour.addStep({
+      id: "enter-employer-name",
+      text: `
+        <div class="welcome-message">
+          <strong class="welcome-title">Let’s test your automation!</strong>
+          <p class="welcome-text">Find the answer field tied to [Employer Name]. Type in 'John Doe' as the employer’s name.</p>
+        </div>
+      `,
+      attachTo: {
+        element: `.mb-12:nth-child(${employerNameIndex + 1}) input[type="text"]`,
+        on: "top",
+      },
+      buttons: [
+        {
+          text: "Next →",
+          action: () => {
+            // Verify that the user has entered "John Doe"
+            const input = document.querySelector(
+              `.mb-12:nth-child(${employerNameIndex + 1}) input[type="text"]`
+            ) as HTMLInputElement;
+            if (input && input.value.trim() === "John Doe") {
+              tour.next();
+            } else {
+              alert("Please enter 'John Doe' in the [Employer Name] field before proceeding.");
+            }
+          },
+        },
+      ],
+    });
+
+    // Step 5: Click Finish to See the Result
+    tour.addStep({
+      id: "click-finish",
+      text: `
+        <div class="welcome-message">
+          <strong class="welcome-title">See the magic happen!</strong>
+          <p class="welcome-text">Now, click the 'Finish' button to witness the magic. Watch as [Employer Name] transforms into 'John Doe' in the document!</p>
+        </div>
+      `,
+      attachTo: {
+        element: ".flex.justify-end.mt-8 button",
+        on: "top",
+      },
+      buttons: [
+        {
+          text: "Finish →",
+          action: () => {
+            // Simulate clicking the Finish button
+            const finishButton = document.querySelector(
+              ".flex.justify-end.mt-8 button"
+            ) as HTMLButtonElement;
+            if (finishButton) {
+              finishButton.click();
+            }
+            // Do not call tour.next() here; the Finish button will trigger the certification popup
+          },
+        },
+      ],
+    });
+
+    // Step 6: Wrap-Up (Triggered after Finish)
+    const handleCertificationPopup = () => {
+      if (showCertificationPopup) {
+        tour.addStep({
+          id: "wrap-up",
+          text: `
+            <div class="welcome-message">
+              <strong class="welcome-title">Victory!</strong>
+              <p class="welcome-text">You’ve just automated your first placeholder like a true legal automation champion. The demo of Part II Level 2 quest is complete.</p>
+              <p class="mission-text">Now you are ready to embark on your document automation journey, play the next level to advance your skills!</p>
+            </div>
+          `,
+          attachTo: {
+            element: ".fixed.inset-0 .p-6.rounded-xl",
+            on: "bottom",
+          },
+          buttons: [
+            {
+              text: "Continue to Level 3 →",
+              action: () => {
+                navigate("/Level-Three");
+                tour.complete();
+              },
+            },
+          ],
+        });
+        tour.show("wrap-up");
+      }
+    };
+
+    // Watch for the certification popup to appear
+    if (showCertificationPopup) {
+      handleCertificationPopup();
+    }
+
+    // Start the tour if there are questions to display
+    if (highlightedTexts.length > 0 && employerNameIndex !== -1) {
+      tour.start();
+    }
+
+    return () => {
+      tour.complete();
+    };
+  }, [highlightedTexts, showCertificationPopup, navigate]);
 
   useEffect(() => {
     let updatedText = documentText;
@@ -898,8 +1008,9 @@ const Live_Generation = () => {
   const handleReplay = () => {
     sessionStorage.clear();
     console.log("sessionStorage cleared on Replay click");
-    navigate("/Level-Two-Part-Two"); // Use navigate instead of window.location.href
+    navigate("/Level-Two-Part-Two");
   };
+
   const selectedPart = localStorage.getItem("selectedPart");
   const levelPath = selectedPart === "4" ? "/Level-Two-Part-Two-Demo" : "/Level-Two-Part-Two";
 
