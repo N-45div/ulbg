@@ -281,37 +281,37 @@ const Questionnaire = () => {
   );
 
   const scoreRequiredStatus = useCallback(
-    (index: number, isRequired: boolean) => {
-      if (isRequired) {
-        if (!scoredQuestions[index]?.requiredScored) {
-          updateQuestionnaireScore(2);
-          showFeedback(2);
-          setScoredQuestions((prev) => ({
-            ...prev,
-            [index]: {
-              ...prev[index],
-              requiredScored: true,
-              requiredCorrect: true,
-            },
-          }));
-        }
-      } else {
-        if (scoredQuestions[index]?.requiredScored) {
-          updateQuestionnaireScore(-2);
-          showFeedback(-2);
-          setScoredQuestions((prev) => ({
-            ...prev,
-            [index]: {
-              ...prev[index],
-              requiredScored: false,ch
-              requiredCorrect: false,
-            },
-          }));
-        }
+  (index: number, isRequired: boolean) => {
+    if (isRequired) {
+      if (!scoredQuestions[index]?.requiredScored) {
+        updateQuestionnaireScore(2);
+        showFeedback(2);
+        setScoredQuestions((prev) => ({
+          ...prev,
+          [index]: {
+            ...prev[index],
+            requiredScored: true,
+            requiredCorrect: true,
+          },
+        }));
       }
-    },
-    [updateQuestionnaireScore, scoredQuestions]
-  );
+    } else {
+      if (scoredQuestions[index]?.requiredScored) {
+        updateQuestionnaireScore(-2);
+        showFeedback(-2);
+        setScoredQuestions((prev) => ({
+          ...prev,
+          [index]: {
+            ...prev[index],
+            requiredScored: false, // Added comma here
+            requiredCorrect: false,
+          },
+        }));
+      }
+    }
+  },
+  [updateQuestionnaireScore, scoredQuestions]
+);
 
   const checkForBonus = useCallback(() => {
     if (uniqueQuestions.length === 0 || bonusAwarded) return;
