@@ -28,6 +28,7 @@ const LevelTwoPart_Two_Demo = () => {
   const { highlightedTexts, addHighlightedText } = useHighlightedText();
   const { selectedTypes, setSelectedTypes } = useQuestionType();
   const documentRef = useRef<HTMLDivElement>(null);
+  const tourRef = useRef<Shepherd.Tour | null>(null); // Store the tour instance
 
   useEffect(() => {
     console.log("LevelTwoPart_Two_Demo - Rendering at:", location.pathname);
@@ -41,11 +42,14 @@ const LevelTwoPart_Two_Demo = () => {
       setSelectedTypes(initialTypes);
       sessionStorage.setItem("selectedQuestionTypes", JSON.stringify(initialTypes));
     }
-  }, [location.pathname, highlightedTexts, setSelectedTypes]);
+  }, [location.pathname, setSelectedTypes]); // Removed highlightedTexts dependency
 
   const getDocumentText = () => {
     return documentRef.current?.textContent || "";
   };
+
+  // State to track the current tour step
+  const [tourStep, setTourStep] = useState<string | null>(sessionStorage.getItem("tourStep") || "welcome");
 
   const handleIconClick = (label: string) => {
     const selection = window.getSelection();
@@ -109,6 +113,23 @@ const LevelTwoPart_Two_Demo = () => {
       span.textContent = selectedText;
       range.deleteContents();
       range.insertNode(span);
+
+      // Update tourStep based on the placeholder being added
+      if (textWithoutBrackets === "Employer Name" && tourStep === "select-employer-name") {
+        setTourStep("selected-placeholder-employer-name");
+        sessionStorage.setItem("tourStep", "selected-placeholder-employer-name");
+      } else if (textWithoutBrackets === "Employee Name" && tourStep === "introduce-employee-name") {
+        setTourStep("selected-placeholder-employee-name");
+        sessionStorage.setItem("tourStep", "selected-placeholder-employee-name");
+      } else if (textWithoutBrackets === "Agreement Date" && tourStep === "introduce-agreement-date") {
+        setTourStep("selected-placeholder-agreement-date");
+        sessionStorage.setItem("tourStep", "selected-placeholder-agreement-date");
+      }
+
+      // Manually advance the tour to the next step
+      if (tourRef.current) {
+        tourRef.current.show(tourStep || "welcome");
+      }
     } else if (label === "Small Condition") {
       if (!(selectedText.startsWith("{") && selectedText.endsWith("}")) || 
           selectedText.length < 35 || 
@@ -125,6 +146,12 @@ const LevelTwoPart_Two_Demo = () => {
       span.textContent = selectedText;
       range.deleteContents();
       range.insertNode(span);
+
+      // Update tourStep for small condition
+      if (tourStep === "introduce-small-condition") {
+        setTourStep("selected-small-condition");
+        sessionStorage.setItem("tourStep", "selected-small-condition");
+      }
     } else if (label === "Big Condition") {
       if (!(selectedText.startsWith("(") && selectedText.endsWith(")"))) return;
       console.log("Selected Big Condition:", selectedText);
@@ -199,6 +226,12 @@ const LevelTwoPart_Two_Demo = () => {
         const newTypesWithQuestion = [...newTypes, "Text"];
         setSelectedTypes(newTypesWithQuestion);
         sessionStorage.setItem("selectedQuestionTypes", JSON.stringify(newTypesWithQuestion));
+
+        // Update tourStep for big condition with probation clause
+        if (tourStep === "introduce-big-condition") {
+          setTourStep("selected-big-condition");
+          sessionStorage.setItem("tourStep", "selected-big-condition");
+        }
       } else if (normalizedSelectedText === normalizedPensionClause) {
         console.log("Pension Clause matched, adding Pension question");
         addHighlightedText("Is the Pension clause applicable?");
@@ -249,10 +282,8 @@ const LevelTwoPart_Two_Demo = () => {
     }
   };
 
-  // State to track the current tour step
-  const [tourStep, setTourStep] = useState<string | null>(sessionStorage.getItem("tourStep") || "welcome");
-
   useEffect(() => {
+    // Initialize the tour only once
     const tour = new Shepherd.Tour({
       defaultStepOptions: {
         cancelIcon: { enabled: true },
@@ -263,6 +294,8 @@ const LevelTwoPart_Two_Demo = () => {
       confirmCancel: false,
       tourName: `level-two-part-two-demo-${Date.now()}`,
     });
+
+    tourRef.current = tour; // Store the tour instance
 
     // Step 1: Welcome
     tour.addStep({
@@ -276,7 +309,16 @@ const LevelTwoPart_Two_Demo = () => {
       `,
       attachTo: { element: document.body, on: "bottom-start" },
       classes: "shepherd-theme-custom animate__animated animate__fadeIn",
-      buttons: [{ text: "Start Learning →", action: tour.next }],
+      buttons: [
+        {
+          text: "Start Learning →",
+          action: () => {
+            setTourStep("placeholders");
+            sessionStorage.setItem("tourStep", "placeholders");
+            tour.next();
+          },
+        },
+      ],
     });
 
     // Step 1.1: Introduce Placeholders
@@ -284,7 +326,16 @@ const LevelTwoPart_Two_Demo = () => {
       id: "placeholders",
       text: "Behold your <strong>employment agreement!</strong> Notice those bits wrapped in square brackets, like <strong>[Employer Name]</strong>? Those are placeholders—your secret weapons for automation. Any text inside <strong>[square brackets]</strong> is a placeholder waiting to be customized.<br> Let's start with [Employer Name] by highlighting it and verifying your selection. Then, click on the 'Edit Placeholder' button to automate your placeholder.",
       attachTo: { element: document.body, on: "bottom-start" },
-      buttons: [{ text: "Next →", action: tour.next }],
+      buttons: [
+        {
+          text: "Next →",
+          action: () => {
+            setTourStep("select-employer-name");
+            sessionStorage.setItem("tourStep", "select-employer-name");
+            tour.next();
+          },
+        },
+      ],
     });
 
     // Step 1.2: Select [Employer Name]
@@ -304,6 +355,8 @@ const LevelTwoPart_Two_Demo = () => {
             const employerNamePlaceholder = "[Employer Name]";
 
             if (selectedText === employerNamePlaceholder) {
+              setTourStep("edit-placeholder-employer-name");
+              sessionStorage.setItem("tourStep", "edit-placeholder-employer-name");
               tour.next();
             } else {
               alert("⚠️ Please select [Employer Name] exactly as shown in the 'PARTIES' section.");
@@ -323,6 +376,8 @@ const LevelTwoPart_Two_Demo = () => {
           text: "Next →",
           action: () => {
             simulateEditPlaceholderClick();
+            setTourStep("selected-placeholder-employer-name");
+            sessionStorage.setItem("tourStep", "selected-placeholder-employer-name");
             tour.next();
           },
         },
@@ -334,7 +389,16 @@ const LevelTwoPart_Two_Demo = () => {
       id: "selected-placeholder-employer-name",
       text: "Your selected placeholder <strong>[Employer Name]</strong> is now visible here 📌 and ready for editing.",
       attachTo: { element: "#selected-placeholder0", on: "bottom" },
-      buttons: [{ text: "Next →", action: tour.next }],
+      buttons: [
+        {
+          text: "Next →",
+          action: () => {
+            setTourStep("questionnaire-employer-name");
+            sessionStorage.setItem("tourStep", "questionnaire-employer-name");
+            tour.next();
+          },
+        },
+      ],
     });
 
     // Step 1.5: Navigate to Questionnaire for [Employer Name]
@@ -346,7 +410,7 @@ const LevelTwoPart_Two_Demo = () => {
         {
           text: "Go to Questionnaire →",
           action: () => {
-            setTourStep("return-from-questionnaire-employer-name"); // Update state
+            setTourStep("return-from-questionnaire-employer-name");
             sessionStorage.setItem("tourStep", "return-from-questionnaire-employer-name");
             navigate("/Questionnaire");
           },
@@ -359,7 +423,16 @@ const LevelTwoPart_Two_Demo = () => {
       id: "return-from-questionnaire-employer-name",
       text: "Great job! You successfully automated the <strong>[Employer Name]</strong> placeholder. Let's move on to the next placeholder.",
       attachTo: { element: "#selected-placeholder0", on: "bottom" },
-      buttons: [{ text: "Next →", action: tour.next }],
+      buttons: [
+        {
+          text: "Next →",
+          action: () => {
+            setTourStep("introduce-employee-name");
+            sessionStorage.setItem("tourStep", "introduce-employee-name");
+            tour.next();
+          },
+        },
+      ],
     });
 
     // Step 2: Automating Placeholders - [Employee Name] and [Agreement Date]
@@ -380,6 +453,8 @@ const LevelTwoPart_Two_Demo = () => {
             const employeeNamePlaceholder = "[Employee Name]";
 
             if (selectedText === employeeNamePlaceholder) {
+              setTourStep("edit-placeholder-employee-name");
+              sessionStorage.setItem("tourStep", "edit-placeholder-employee-name");
               tour.next();
             } else {
               alert("⚠️ Please select [Employee Name] exactly as shown in the 'PARTIES' section.");
@@ -399,6 +474,8 @@ const LevelTwoPart_Two_Demo = () => {
           text: "Next →",
           action: () => {
             simulateEditPlaceholderClick();
+            setTourStep("selected-placeholder-employee-name");
+            sessionStorage.setItem("tourStep", "selected-placeholder-employee-name");
             tour.next();
           },
         },
@@ -410,7 +487,16 @@ const LevelTwoPart_Two_Demo = () => {
       id: "selected-placeholder-employee-name",
       text: "Your selected placeholder <strong>[Employee Name]</strong> is now visible here 📌 and ready for editing.",
       attachTo: { element: "#selected-placeholder1", on: "bottom" },
-      buttons: [{ text: "Next →", action: tour.next }],
+      buttons: [
+        {
+          text: "Next →",
+          action: () => {
+            setTourStep("introduce-agreement-date");
+            sessionStorage.setItem("tourStep", "introduce-agreement-date");
+            tour.next();
+          },
+        },
+      ],
     });
 
     // Step 2.4: Introduce [Agreement Date]
@@ -430,6 +516,8 @@ const LevelTwoPart_Two_Demo = () => {
             const agreementDatePlaceholder = "[Agreement Date]";
 
             if (selectedText === agreementDatePlaceholder) {
+              setTourStep("edit-placeholder-agreement-date");
+              sessionStorage.setItem("tourStep", "edit-placeholder-agreement-date");
               tour.next();
             } else {
               alert("⚠️ Please select [Agreement Date] exactly as shown in the 'PARTIES' section.");
@@ -449,6 +537,8 @@ const LevelTwoPart_Two_Demo = () => {
           text: "Next →",
           action: () => {
             simulateEditPlaceholderClick();
+            setTourStep("selected-placeholder-agreement-date");
+            sessionStorage.setItem("tourStep", "selected-placeholder-agreement-date");
             tour.next();
           },
         },
@@ -460,7 +550,16 @@ const LevelTwoPart_Two_Demo = () => {
       id: "selected-placeholder-agreement-date",
       text: "Your selected placeholder <strong>[Agreement Date]</strong> is now visible here 📌 and ready for editing.",
       attachTo: { element: "#selected-placeholder2", on: "bottom" },
-      buttons: [{ text: "Next →", action: tour.next }],
+      buttons: [
+        {
+          text: "Next →",
+          action: () => {
+            setTourStep("questionnaire-employee-name-agreement-date");
+            sessionStorage.setItem("tourStep", "questionnaire-employee-name-agreement-date");
+            tour.next();
+          },
+        },
+      ],
     });
 
     // Step 2.7: Navigate to Questionnaire for [Employee Name] and [Agreement Date]
@@ -485,7 +584,16 @@ const LevelTwoPart_Two_Demo = () => {
       id: "return-from-questionnaire-employee-name-agreement-date",
       text: "Great job! You successfully automated the placeholders <strong>[Employee Name]</strong> and <strong>[Agreement Date]</strong>! Let's move on to automating conditions.",
       attachTo: { element: "#selected-placeholder2", on: "bottom" },
-      buttons: [{ text: "Next →", action: tour.next }],
+      buttons: [
+        {
+          text: "Next →",
+          action: () => {
+            setTourStep("introduce-small-condition");
+            sessionStorage.setItem("tourStep", "introduce-small-condition");
+            tour.next();
+          },
+        },
+      ],
     });
 
     // Step 3: Automating a Small Condition - {Overtime Pay Clause}
@@ -506,6 +614,8 @@ const LevelTwoPart_Two_Demo = () => {
             const overtimePayClause = "{The Employee is entitled to overtime pay for authorized overtime work.}";
 
             if (selectedText === overtimePayClause) {
+              setTourStep("small-condition-button");
+              sessionStorage.setItem("tourStep", "small-condition-button");
               tour.next();
             } else {
               alert("⚠️ Please select {The Employee is entitled to overtime pay for authorized overtime work.} exactly as shown in the 'WORKING HOURS' section.");
@@ -525,6 +635,8 @@ const LevelTwoPart_Two_Demo = () => {
           text: "Next →",
           action: () => {
             simulateSmallConditionClick();
+            setTourStep("selected-small-condition");
+            sessionStorage.setItem("tourStep", "selected-small-condition");
             tour.next();
           },
         },
@@ -536,7 +648,16 @@ const LevelTwoPart_Two_Demo = () => {
       id: "selected-small-condition",
       text: "Your selected condition <strong>{The Employee is entitled to overtime pay for authorized overtime work.}</strong> is now visible here 📌 and ready for editing.",
       attachTo: { element: "#selected-placeholder3", on: "bottom" },
-      buttons: [{ text: "Next →", action: tour.next }],
+      buttons: [
+        {
+          text: "Next →",
+          action: () => {
+            setTourStep("questionnaire-small-condition");
+            sessionStorage.setItem("tourStep", "questionnaire-small-condition");
+            tour.next();
+          },
+        },
+      ],
     });
 
     // Step 3.4: Navigate to Questionnaire for Small Condition
@@ -561,7 +682,16 @@ const LevelTwoPart_Two_Demo = () => {
       id: "return-from-questionnaire-small-condition",
       text: "Good job automating the small condition <strong>{The Employee is entitled to overtime pay for authorized overtime work.}</strong>! Let's move on to a big condition.",
       attachTo: { element: "#selected-placeholder3", on: "bottom" },
-      buttons: [{ text: "Next →", action: tour.next }],
+      buttons: [
+        {
+          text: "Next →",
+          action: () => {
+            setTourStep("introduce-big-condition");
+            sessionStorage.setItem("tourStep", "introduce-big-condition");
+            tour.next();
+          },
+        },
+      ],
     });
 
     // Step 4: Automating a Big Condition - (Probationary Period Clause)
@@ -583,6 +713,8 @@ const LevelTwoPart_Two_Demo = () => {
             const probationaryPeriodClauseEnd = "confirmed in their role.)";
 
             if (selectedText.startsWith(probationaryPeriodClauseStart) && selectedText.endsWith(probationaryPeriodClauseEnd)) {
+              setTourStep("big-condition-button");
+              sessionStorage.setItem("tourStep", "big-condition-button");
               tour.next();
             } else {
               alert("⚠️ Please select the entire (PROBATIONARY PERIOD...) section, including the heading and paragraph.");
@@ -602,6 +734,8 @@ const LevelTwoPart_Two_Demo = () => {
           text: "Next →",
           action: () => {
             simulateBigConditionClick();
+            setTourStep("selected-big-condition");
+            sessionStorage.setItem("tourStep", "selected-big-condition");
             tour.next();
           },
         },
@@ -613,7 +747,16 @@ const LevelTwoPart_Two_Demo = () => {
       id: "selected-big-condition",
       text: "Your selected condition <strong>(PROBATIONARY PERIOD...)</strong> is now visible here 📌. Notice that an additional question 'Is the clause of probationary period applicable?' has been automatically added.",
       attachTo: { element: "#selected-placeholder4", on: "bottom" },
-      buttons: [{ text: "Next →", action: tour.next }],
+      buttons: [
+        {
+          text: "Next →",
+          action: () => {
+            setTourStep("questionnaire-big-condition");
+            sessionStorage.setItem("tourStep", "questionnaire-big-condition");
+            tour.next();
+          },
+        },
+      ],
     });
 
     // Step 4.4: Navigate to Questionnaire for Big Condition
@@ -658,9 +801,11 @@ const LevelTwoPart_Two_Demo = () => {
 
     // Cleanup on unmount
     return () => {
-      tour.complete();
+      if (tourRef.current) {
+        tourRef.current.complete();
+      }
     };
-  }, [tourStep, navigate, highlightedTexts, selectedTypes, setSelectedTypes]);
+  }, [navigate]); // Removed highlightedTexts and selectedTypes from dependencies
 
   return (
     <div
@@ -736,7 +881,7 @@ const LevelTwoPart_Two_Demo = () => {
                   key={`${text}-${index}`}
                   className={`flex items-center justify-between p-4 rounded-lg shadow-md transition-all duration-300 ease-in-out transform hover:-translate-y-1 ${
                     isDarkMode
-                      ? "text-teal-200 bg-gray-600/80 hover:bg-gray-500/70"
+                      ? "Campus Recruitmenttext-teal-200 bg-gray-600/80 hover:bg-gray-500/70"
                       : "text-teal-800 bg-white/80 hover:bg-teal-100/70"
                   }`}
                 >
