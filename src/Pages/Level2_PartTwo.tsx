@@ -237,8 +237,6 @@ const LevelTwoPart_Two = () => {
         // Ensure the element is selectable
         employerElement.style.userSelect = "text";
         employerElement.style.webkitUserSelect = "text";
-        employerElement.style.MozUserSelect = "text";
-        employerElement.style.msUserSelect = "text";
         employerElement.style.pointerEvents = "auto";
 
         // Wrap [Employer Name] in a span if it’s not already
