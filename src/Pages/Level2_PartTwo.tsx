@@ -18,72 +18,44 @@ const icons = [
   { icon: <TbSettingsPlus />, label: "Big Condition" },
 ];
 
-// Custom TourOverlay Component
-const TourOverlay = ({
+// Simple TourModal Component
+const TourModal = ({
   step,
   onNext,
+  onSkip,
   onComplete,
   isDarkMode,
-  employerNameElement,
-  editButtonElement,
 }: {
   step: number;
   onNext: () => void;
+  onSkip: () => void;
   onComplete: () => void;
   isDarkMode: boolean;
-  employerNameElement: HTMLElement | null;
-  editButtonElement: HTMLElement | null;
 }) => {
-  console.log("TourOverlay rendering with step:", step);
+  const modalStyle: React.CSSProperties = {
+    position: "fixed",
+    top: "50%",
+    left: "50%",
+    transform: "translate(-50%, -50%)",
+    backgroundColor: isDarkMode ? "#1f2937" : "#ffffff",
+    color: isDarkMode ? "#ffffff" : "#000000",
+    padding: "20px",
+    borderRadius: "8px",
+    boxShadow: "0 4px 6px rgba(0, 0, 0, 0.3)",
+    maxWidth: "500px",
+    width: "90%",
+    zIndex: 1000,
+    textAlign: "center",
+  };
 
-  useEffect(() => {
-    if (step !== 2) return;
-
-    const handleSelection = () => {
-      const selection = window.getSelection();
-      const selectedText = selection?.toString().trim();
-      console.log("Tour Step 2 - Selected text:", selectedText);
-      if (selectedText === "[Employer Name]") {
-        console.log("Tour Step 2 - Selection matches [Employer Name], advancing to step 3");
-        onNext();
-      }
-    };
-
-    document.addEventListener("mouseup", handleSelection);
-    return () => document.removeEventListener("mouseup", handleSelection);
-  }, [step, onNext]);
-
-  const overlayStyle: React.CSSProperties = {
+  const backdropStyle: React.CSSProperties = {
     position: "fixed",
     top: 0,
     left: 0,
     width: "100%",
     height: "100%",
     backgroundColor: "rgba(0, 0, 0, 0.5)",
-    zIndex: 9999,
-    pointerEvents: step === 2 || step === 3 ? "none" : "auto",
-  };
-
-  const messageStyle: React.CSSProperties = {
-    position: "absolute",
-    backgroundColor: isDarkMode ? "#1f2937" : "#ffffff",
-    color: isDarkMode ? "#ffffff" : "#000000",
-    padding: "20px",
-    borderRadius: "8px",
-    boxShadow: "0 4px 6px rgba(0, 0, 0, 0.3)",
-    maxWidth: "400px",
-    pointerEvents: "auto",
-    border: "2px solid #3b82f6",
-  };
-
-  const highlightStyle: React.CSSProperties = {
-    position: "absolute",
-    border: "3px solid #3b82f6",
-    borderRadius: "4px",
-    pointerEvents: "none",
-    zIndex: 10000,
-    backgroundColor: "rgba(59, 130, 246, 0.3)",
-    animation: "pulse 1.5s infinite",
+    zIndex: 999,
   };
 
   const buttonStyle: React.CSSProperties = {
@@ -93,64 +65,37 @@ const TourOverlay = ({
     borderRadius: "4px",
     border: "none",
     cursor: "pointer",
-    marginTop: "10px",
+    margin: "5px",
   };
 
-  let messagePosition: React.CSSProperties = { top: "20%", left: "50%", transform: "translateX(-50%)" };
-  let highlightPosition: React.CSSProperties | undefined;
-
-  if (step === 2 && employerNameElement) {
-    const rect = employerNameElement.getBoundingClientRect();
-    messagePosition = { top: rect.bottom + window.scrollY + 20, left: rect.left + rect.width / 2, transform: "translateX(-50%)" };
-    highlightPosition = {
-      top: rect.top + window.scrollY,
-      left: rect.left,
-      width: rect.width,
-      height: rect.height,
-    };
-    employerNameElement.scrollIntoView({ behavior: "smooth", block: "center" });
-  } else if (step === 3 && editButtonElement) {
-    const rect = editButtonElement.getBoundingClientRect();
-    messagePosition = { top: rect.bottom + window.scrollY + 20, left: rect.left + rect.width / 2, transform: "translateX(-50%)" };
-    highlightPosition = {
-      top: rect.top + window.scrollY,
-      left: rect.left,
-      width: rect.width,
-      height: rect.height,
-    };
-    editButtonElement.scrollIntoView({ behavior: "smooth", block: "center" });
-  } else if (step === 4) {
-    messagePosition = { top: "20%", left: "50%", transform: "translateX(-50%)" };
-  }
+  const skipButtonStyle: React.CSSProperties = {
+    backgroundColor: "transparent",
+    color: isDarkMode ? "#a0aec0" : "#6b7280",
+    padding: "8px 16px",
+    borderRadius: "4px",
+    border: "none",
+    cursor: "pointer",
+    margin: "5px",
+    textDecoration: "underline",
+  };
 
   return (
-    <div style={overlayStyle}>
-      <style>
-        {`
-          @keyframes pulse {
-            0% {
-              box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
-            }
-            70% {
-              box-shadow: 0 0 0 10px rgba(59, 130, 246, 0);
-            }
-            100% {
-              box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
-            }
-          }
-        `}
-      </style>
-      <div style={{ ...messageStyle, ...messagePosition }}>
+    <>
+      <div style={backdropStyle} />
+      <div style={modalStyle}>
         {step === 1 && (
           <>
             <h3 style={{ fontSize: "1.5rem", fontWeight: "bold", marginBottom: "10px" }}>
               Welcome to the Document Tab!
             </h3>
-            <p style={{ fontSize: "1rem", marginBottom: "10px" }}>
-              Here, you’ll learn to automate placeholders in the employment agreement. Let’s start by selecting a placeholder.
+            <p style={{ fontSize: "1rem", marginBottom: "20px" }}>
+              In this section, you’ll learn to automate placeholders in the employment agreement. Let’s start by finding a placeholder.
             </p>
             <button style={buttonStyle} onClick={onNext}>
-              Next →
+              Next
+            </button>
+            <button style={skipButtonStyle} onClick={onSkip}>
+              Skip Tour
             </button>
           </>
         )}
@@ -159,19 +104,31 @@ const TourOverlay = ({
             <h3 style={{ fontSize: "1.5rem", fontWeight: "bold", marginBottom: "10px" }}>
               Select a Placeholder
             </h3>
-            <p style={{ fontSize: "1rem", marginBottom: "10px" }}>
-              Find and highlight the [Employer Name] placeholder in the document below.
+            <p style={{ fontSize: "1rem", marginBottom: "20px" }}>
+              Scroll down to the document and highlight the <strong>[Employer Name]</strong> placeholder by selecting it with your mouse.
             </p>
+            <button style={buttonStyle} onClick={onNext}>
+              I’ve Selected It
+            </button>
+            <button style={skipButtonStyle} onClick={onSkip}>
+              Skip Tour
+            </button>
           </>
         )}
         {step === 3 && (
           <>
             <h3 style={{ fontSize: "1.5rem", fontWeight: "bold", marginBottom: "10px" }}>
-              Click the Edit Placeholder Button
+              Edit the Placeholder
             </h3>
-            <p style={{ fontSize: "1rem", marginBottom: "10px" }}>
-              Now, click the Edit Placeholder button to add it to your selected placeholders.
+            <p style={{ fontSize: "1rem", marginBottom: "20px" }}>
+              Now, click the <strong>Edit PlaceHolder</strong> button in the top-right corner to add it to your selected placeholders.
             </p>
+            <button style={buttonStyle} onClick={onNext}>
+              I’ve Clicked It
+            </button>
+            <button style={skipButtonStyle} onClick={onSkip}>
+              Skip Tour
+            </button>
           </>
         )}
         {step === 4 && (
@@ -179,17 +136,19 @@ const TourOverlay = ({
             <h3 style={{ fontSize: "1.5rem", fontWeight: "bold", marginBottom: "10px" }}>
               Great Job!
             </h3>
-            <p style={{ fontSize: "1rem", marginBottom: "10px" }}>
+            <p style={{ fontSize: "1rem", marginBottom: "20px" }}>
               You’ve successfully selected a placeholder. Let’s move to the Questionnaire tab to create a question for it.
             </p>
             <button style={buttonStyle} onClick={onComplete}>
-              Go to Questionnaire →
+              Go to Questionnaire
+            </button>
+            <button style={skipButtonStyle} onClick={onSkip}>
+              Skip
             </button>
           </>
         )}
       </div>
-      {highlightPosition && <div style={{ ...highlightStyle, ...highlightPosition }} />}
-    </div>
+    </>
   );
 };
 
@@ -202,8 +161,7 @@ const LevelTwoPart_Two = () => {
   const { selectedTypes } = useQuestionType();
   const documentRef = useRef<HTMLDivElement>(null);
   const [tourStep, setTourStep] = useState(0);
-  const [employerNameElement, setEmployerNameElement] = useState<HTMLElement | null>(null);
-  const [editButtonElement, setEditButtonElement] = useState<HTMLElement | null>(null);
+  const [hasSelectedPlaceholder, setHasSelectedPlaceholder] = useState(false);
 
   // Scoring system
   const { levelTwoScore, setLevelTwoScore } = useScore();
@@ -240,6 +198,28 @@ const LevelTwoPart_Two = () => {
       window.removeEventListener("beforeunload", handleBeforeUnload);
     };
   }, []);
+
+  // Start the tour when the component mounts, based on selectedPart
+  useEffect(() => {
+    const selectedPart = parseInt(localStorage.getItem("selectedPart") || "0", 10);
+    if (selectedPart === 1 || selectedPart === 4) {
+      setTourStep(1); // Start the tour
+    }
+  }, []);
+
+  // Monitor text selection to detect when [Employer Name] is highlighted
+  useEffect(() => {
+    const handleSelection = () => {
+      const selection = window.getSelection();
+      const selectedText = selection?.toString().trim();
+      if (selectedText === "[Employer Name]" && tourStep === 2) {
+        setHasSelectedPlaceholder(true);
+      }
+    };
+
+    document.addEventListener("mouseup", handleSelection);
+    return () => document.removeEventListener("mouseup", handleSelection);
+  }, [tourStep]);
 
   const getDocumentText = () => {
     return documentRef.current?.textContent || "";
@@ -300,8 +280,7 @@ const LevelTwoPart_Two = () => {
         setTimeout(() => setScoreChange(null), 2000);
         setFoundPlaceholders((prev) => [...prev, textWithoutBrackets]);
         if (tourStep === 3) {
-          console.log("Tour Step 3 - Edit Placeholder button clicked, advancing to step 4");
-          setTourStep(4);
+          setTourStep(4); // Advance to the final step
         }
       } else if (label === "Small Condition" && !foundSmallConditions.includes(textWithoutBrackets)) {
         setScore((prevScore) => prevScore + 3);
@@ -426,76 +405,19 @@ const LevelTwoPart_Two = () => {
     }
   };
 
-  // Custom Tour Logic with MutationObserver
-  useEffect(() => {
-    const selectedPart = parseInt(localStorage.getItem("selectedPart") || "0", 10);
-    console.log("Selected Part:", selectedPart);
-
-    if (selectedPart !== 1 && selectedPart !== 4) {
-      console.log("Tour not started: selectedPart is not 1 or 4");
+  const handleTourNext = () => {
+    if (tourStep === 2 && !hasSelectedPlaceholder) {
+      alert("Please select the [Employer Name] placeholder before proceeding.");
       return;
     }
+    setTourStep((prev) => prev + 1);
+  };
 
-    const findElements = () => {
-      const employerElement = Array.from(document.querySelectorAll("span, p, div")).find(
-        (el) => el.textContent?.includes("[Employer Name]")
-      ) as HTMLElement | undefined;
-      const editButton = document.getElementById("edit-placeholder") as HTMLElement | null;
-
-      if (employerElement && editButton) {
-        console.log("Employer Name Element:", employerElement);
-        console.log("Edit Placeholder Button:", editButton);
-        setEmployerNameElement(employerElement);
-        setEditButtonElement(editButton);
-        setTourStep((prev) => {
-          if (prev === 0) {
-            console.log("Setting tourStep to 1");
-            return 1;
-          }
-          console.log("tourStep already set, current value:", prev);
-          return prev;
-        });
-      } else {
-        console.log("Elements not found, continuing to observe...");
-      }
-    };
-
-    findElements();
-
-    const observer = new MutationObserver((_, obs) => {
-      if (!employerNameElement || !editButtonElement) {
-        findElements();
-      } else {
-        console.log("Elements found, disconnecting observer");
-        obs.disconnect();
-      }
-    });
-
-    observer.observe(document.body, {
-      childList: true,
-      subtree: true,
-    });
-
-    return () => {
-      console.log("Cleaning up: Disconnecting MutationObserver");
-      observer.disconnect();
-    };
-  }, []);
-
-  useEffect(() => {
-    console.log("tourStep updated to:", tourStep);
-  }, [tourStep]);
-
-  const handleTourNext = () => {
-    setTourStep((prev) => {
-      const nextStep = prev + 1;
-      console.log(`Advancing tour to step ${nextStep}`);
-      return nextStep;
-    });
+  const handleTourSkip = () => {
+    setTourStep(0);
   };
 
   const handleTourComplete = () => {
-    console.log("Tour completed, navigating to /Questionnaire");
     setTourStep(0);
     navigate("/Questionnaire");
   };
@@ -711,13 +633,12 @@ const LevelTwoPart_Two = () => {
       </div>
 
       {tourStep > 0 && (
-        <TourOverlay
+        <TourModal
           step={tourStep}
           onNext={handleTourNext}
+          onSkip={handleTourSkip}
           onComplete={handleTourComplete}
           isDarkMode={isDarkMode}
-          employerNameElement={employerNameElement}
-          editButtonElement={editButtonElement}
         />
       )}
     </div>
