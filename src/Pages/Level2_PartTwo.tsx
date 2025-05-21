@@ -34,6 +34,8 @@ const TourOverlay = ({
   employerNameElement: HTMLElement | null;
   editButtonElement: HTMLElement | null;
 }) => {
+  console.log("TourOverlay rendering with step:", step);
+
   useEffect(() => {
     if (step !== 2) return;
 
@@ -58,7 +60,7 @@ const TourOverlay = ({
     width: "100%",
     height: "100%",
     backgroundColor: "rgba(0, 0, 0, 0.5)",
-    zIndex: 1000,
+    zIndex: 9999, // Increased z-index to ensure visibility
     pointerEvents: step === 2 || step === 3 ? "none" : "auto",
   };
 
@@ -68,18 +70,19 @@ const TourOverlay = ({
     color: isDarkMode ? "#ffffff" : "#000000",
     padding: "20px",
     borderRadius: "8px",
-    boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
+    boxShadow: "0 4px 6px rgba(0, 0, 0, 0.3)",
     maxWidth: "400px",
     pointerEvents: "auto",
+    border: "2px solid #3b82f6", // Added border for visibility
   };
 
   const highlightStyle: React.CSSProperties = {
     position: "absolute",
     border: "3px solid #3b82f6",
     borderRadius: "4px",
-    pointerEvents: "auto",
-    zIndex: 1001,
-    backgroundColor: "rgba(59, 130, 246, 0.2)",
+    pointerEvents: "none",
+    zIndex: 10000,
+    backgroundColor: "rgba(59, 130, 246, 0.3)",
     animation: "pulse 1.5s infinite",
   };
 
@@ -98,7 +101,7 @@ const TourOverlay = ({
 
   if (step === 2 && employerNameElement) {
     const rect = employerNameElement.getBoundingClientRect();
-    messagePosition = { top: rect.bottom + window.scrollY + 10, left: rect.left + rect.width / 2, transform: "translateX(-50%)" };
+    messagePosition = { top: rect.bottom + window.scrollY + 20, left: rect.left + rect.width / 2, transform: "translateX(-50%)" };
     highlightPosition = {
       top: rect.top + window.scrollY,
       left: rect.left,
@@ -108,7 +111,7 @@ const TourOverlay = ({
     employerNameElement.scrollIntoView({ behavior: "smooth", block: "center" });
   } else if (step === 3 && editButtonElement) {
     const rect = editButtonElement.getBoundingClientRect();
-    messagePosition = { top: rect.bottom + window.scrollY + 10, left: rect.left + rect.width / 2, transform: "translateX(-50%)" };
+    messagePosition = { top: rect.bottom + window.scrollY + 20, left: rect.left + rect.width / 2, transform: "translateX(-50%)" };
     highlightPosition = {
       top: rect.top + window.scrollY,
       left: rect.left,
@@ -444,8 +447,14 @@ const LevelTwoPart_Two = () => {
         console.log("Edit Placeholder Button:", editButton);
         setEmployerNameElement(employerElement);
         setEditButtonElement(editButton);
-        setTourStep(1);
-        console.log("Custom tour started at step 1");
+        setTourStep((prev) => {
+          if (prev === 0) {
+            console.log("Setting tourStep to 1");
+            return 1;
+          }
+          console.log("tourStep already set, current value:", prev);
+          return prev;
+        });
       } else {
         console.log("Elements not found, continuing to observe...");
       }
@@ -453,9 +462,12 @@ const LevelTwoPart_Two = () => {
 
     findElements();
 
-    const observer = new MutationObserver(() => {
+    const observer = new MutationObserver((mutations, obs) => {
       if (!employerNameElement || !editButtonElement) {
         findElements();
+      } else {
+        console.log("Elements found, disconnecting observer");
+        obs.disconnect();
       }
     });
 
@@ -465,9 +477,14 @@ const LevelTwoPart_Two = () => {
     });
 
     return () => {
+      console.log("Cleaning up: Disconnecting MutationObserver");
       observer.disconnect();
     };
-  }, [employerNameElement, editButtonElement]);
+  }, []);
+
+  useEffect(() => {
+    console.log("tourStep updated to:", tourStep);
+  }, [tourStep]);
 
   const handleTourNext = () => {
     setTourStep((prev) => {
@@ -693,7 +710,7 @@ const LevelTwoPart_Two = () => {
         </button>
       </div>
 
-      {tourStep > 0 && (
+      {tourStep > 0 ? (
         <TourOverlay
           step={tourStep}
           onNext={handleTourNext}
@@ -702,6 +719,8 @@ const LevelTwoPart_Two = () => {
           employerNameElement={employerNameElement}
           editButtonElement={editButtonElement}
         />
+      ) : (
+        console.log("TourOverlay not rendered: tourStep is", tourStep)
       )}
     </div>
   );
