@@ -710,7 +710,7 @@ const LevelTwoPart_Two = () => {
         </button>
       </div>
 
-      {tourStep > 0 ? (
+      {tourStep > 0 && (
         <TourOverlay
           step={tourStep}
           onNext={handleTourNext}
@@ -719,8 +719,7 @@ const LevelTwoPart_Two = () => {
           employerNameElement={employerNameElement}
           editButtonElement={editButtonElement}
         />
-      ) : null}
-      {tourStep === 0 && console.log("TourOverlay not rendered: tourStep is", tourStep)}
+      )}
     </div>
   );
 };
