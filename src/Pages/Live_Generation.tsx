@@ -59,6 +59,8 @@ const CertificationPopup: React.FC<CertificationPopupProps> = ({
   const isExcellent = score > 151;
   const isFailed = score < 40;
   const isIntermediate = !isExcellent && !isFailed;
+  const selectedPart = localStorage.getItem("selectedPart");
+  const isDemo = selectedPart === "4"; // Check if this is the demo part
 
   return (
     <div className="fixed inset-0 backdrop-blur-sm bg-black/30 flex items-center justify-center z-50">
@@ -79,8 +81,8 @@ const CertificationPopup: React.FC<CertificationPopupProps> = ({
         <p className={`mb-6 ${isDarkMode ? "text-gray-200" : "text-gray-700"}`}>
           {message}
         </p>
-        <div className={`flex ${isIntermediate ? "justify-between" : "justify-end"}`}>
-          {(isFailed || isIntermediate) && (
+        <div className={`flex ${isIntermediate && !isDemo ? "justify-between" : "justify-end"}`}>
+          {(isFailed || isIntermediate) && !isDemo && (
             <button
               onClick={onReplay}
               className={`px-4 py-2 rounded-lg ${
@@ -92,7 +94,7 @@ const CertificationPopup: React.FC<CertificationPopupProps> = ({
               Replay
             </button>
           )}
-          {(isExcellent || isIntermediate) && (
+          {(isExcellent || isIntermediate || (isFailed && isDemo)) && (
             <button
               onClick={onContinue}
               className={`px-4 py-2 rounded-lg ${
@@ -129,6 +131,8 @@ const Live_Generation = () => {
   const [certificationMessage, setCertificationMessage] = useState("");
   const [showWarning, setShowWarning] = useState(false);
   const { questionnaireScore } = useScore();
+  const [tourStarted, setTourStarted] = useState(false); // Track if initial tour steps have started
+  const [tourFinished, setTourFinished] = useState(false); // Track if the "Finish" step has been completed
 
   useEffect(() => {
     const savedOrder = sessionStorage.getItem("questionOrder_2");
@@ -274,8 +278,8 @@ const Live_Generation = () => {
       id: "enter-employer-name",
       text: `
         <div class="welcome-message">
-          <strong class="welcome-title">Let’s test your automation!</strong>
-          <p class="welcome-text">Find the answer field tied to [Employer Name]. Type in 'John Doe' as the employer’s name.</p>
+          <strong class="welcome-title">Enter Employer Name</strong>
+          <p class="welcome-text">Please enter the employer’s name in the field below.</p>
         </div>
       `,
       attachTo: {
@@ -323,6 +327,7 @@ const Live_Generation = () => {
             ) as HTMLButtonElement;
             if (finishButton) {
               finishButton.click();
+              setTourFinished(true); // Mark the "Finish" step as completed
             }
             // Do not call tour.next() here; the Finish button will trigger the certification popup
           },
@@ -337,9 +342,8 @@ const Live_Generation = () => {
           id: "wrap-up",
           text: `
             <div class="welcome-message">
-              <strong class="welcome-title">Victory!</strong>
-              <p class="welcome-text">You’ve just automated your first placeholder like a true legal automation champion. The demo of Part II Level 2 quest is complete.</p>
-              <p class="mission-text">Now you are ready to embark on your document automation journey, play the next level to advance your skills!</p>
+              <strong class="welcome-title">Demo Complete</strong>
+              <p class="welcome-text">You have completed the demo.</p>
             </div>
           `,
           attachTo: {
@@ -348,9 +352,9 @@ const Live_Generation = () => {
           },
           buttons: [
             {
-              text: "Continue to Level 3 →",
+              text: "Continue to Dashboard →",
               action: () => {
-                navigate("/Level-Three");
+                navigate("/dashboard");
                 tour.complete();
               },
             },
@@ -360,20 +364,21 @@ const Live_Generation = () => {
       }
     };
 
-    // Watch for the certification popup to appear
-    if (showCertificationPopup) {
-      handleCertificationPopup();
+    // Start the initial tour steps only if the "Finish" step hasn't been completed
+    if (!tourStarted && !tourFinished && highlightedTexts.length > 0 && employerNameIndex !== -1) {
+      setTourStarted(true);
+      tour.start();
     }
 
-    // Start the tour if there are questions to display
-    if (highlightedTexts.length > 0 && employerNameIndex !== -1) {
-      tour.start();
+    // Handle the certification popup separately after "Finish" is clicked
+    if (showCertificationPopup && tourFinished) {
+      handleCertificationPopup();
     }
 
     return () => {
       tour.complete();
     };
-  }, [highlightedTexts, showCertificationPopup, navigate]);
+  }, [highlightedTexts, showCertificationPopup, navigate, tourStarted, tourFinished]);
 
   useEffect(() => {
     let updatedText = documentText;
