@@ -25,12 +25,14 @@ const TourModal = ({
   onSkip,
   onComplete,
   isDarkMode,
+  selectionFailed,
 }: {
   step: number;
   onNext: () => void;
   onSkip: () => void;
   onComplete: () => void;
   isDarkMode: boolean;
+  selectionFailed: boolean;
 }) => {
   const modalStyle: React.CSSProperties = {
     position: "fixed",
@@ -79,6 +81,16 @@ const TourModal = ({
     textDecoration: "underline",
   };
 
+  const warningButtonStyle: React.CSSProperties = {
+    backgroundColor: "#f59e0b",
+    color: "#ffffff",
+    padding: "8px 16px",
+    borderRadius: "4px",
+    border: "none",
+    cursor: "pointer",
+    margin: "5px",
+  };
+
   return (
     <>
       <div style={backdropStyle} />
@@ -110,6 +122,11 @@ const TourModal = ({
             <button style={buttonStyle} onClick={onNext}>
               I’ve Selected It
             </button>
+            {selectionFailed && (
+              <button style={warningButtonStyle} onClick={onNext}>
+                I Can’t Select It, Proceed Anyway
+              </button>
+            )}
             <button style={skipButtonStyle} onClick={onSkip}>
               Skip Tour
             </button>
@@ -162,6 +179,7 @@ const LevelTwoPart_Two = () => {
   const documentRef = useRef<HTMLDivElement>(null);
   const [tourStep, setTourStep] = useState(0);
   const [hasSelectedPlaceholder, setHasSelectedPlaceholder] = useState(false);
+  const [selectionAttempts, setSelectionAttempts] = useState(0);
 
   // Scoring system
   const { levelTwoScore, setLevelTwoScore } = useScore();
@@ -216,6 +234,13 @@ const LevelTwoPart_Two = () => {
       ) as HTMLElement | undefined;
 
       if (employerElement) {
+        // Ensure the element is selectable
+        employerElement.style.userSelect = "text";
+        employerElement.style.webkitUserSelect = "text";
+        employerElement.style.MozUserSelect = "text";
+        employerElement.style.msUserSelect = "text";
+        employerElement.style.pointerEvents = "auto";
+
         // Wrap [Employer Name] in a span if it’s not already
         const textNode = Array.from(employerElement.childNodes).find(
           (node) => node.textContent?.includes("[Employer Name]")
@@ -232,8 +257,22 @@ const LevelTwoPart_Two = () => {
           );
         }
         employerElement.scrollIntoView({ behavior: "smooth", block: "center" });
+      } else {
+        console.log("[Employer Name] not found in DOM yet.");
       }
     };
+
+    // Prevent events that might block selection
+    const enableSelection = (e: Event) => {
+      e.stopPropagation();
+    };
+
+    const container = document.querySelector(".employment-agreement-container");
+    if (container) {
+      container.addEventListener("mousedown", enableSelection);
+      container.addEventListener("selectstart", enableSelection);
+      container.addEventListener("dragstart", enableSelection);
+    }
 
     // Run immediately and set up a MutationObserver in case the DOM changes
     highlightEmployerName();
@@ -249,6 +288,11 @@ const LevelTwoPart_Two = () => {
 
     return () => {
       observer.disconnect();
+      if (container) {
+        container.removeEventListener("mousedown", enableSelection);
+        container.removeEventListener("selectstart", enableSelection);
+        container.removeEventListener("dragstart", enableSelection);
+      }
     };
   }, []);
 
@@ -259,6 +303,9 @@ const LevelTwoPart_Two = () => {
       const selectedText = selection?.toString().trim();
       if (selectedText === "[Employer Name]" && tourStep === 2) {
         setHasSelectedPlaceholder(true);
+        setSelectionAttempts(0); // Reset attempts on success
+      } else if (tourStep === 2) {
+        setSelectionAttempts((prev) => prev + 1);
       }
     };
 
@@ -484,6 +531,7 @@ const LevelTwoPart_Two = () => {
             -webkit-user-select: text !important;
             -moz-user-select: text !important;
             -ms-user-select: text !important;
+            pointer-events: auto !important;
           }
           .employer-name-highlight {
             background-color: #ffeb3b;
@@ -493,6 +541,8 @@ const LevelTwoPart_Two = () => {
             -webkit-user-select: text !important;
             -moz-user-select: text !important;
             -ms-user-select: text !important;
+            pointer-events: auto !important;
+            cursor: text !important;
           }
         `}
       </style>
@@ -703,6 +753,7 @@ const LevelTwoPart_Two = () => {
           onSkip={handleTourSkip}
           onComplete={handleTourComplete}
           isDarkMode={isDarkMode}
+          selectionFailed={selectionAttempts > 2}
         />
       )}
     </div>
