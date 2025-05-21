@@ -105,7 +105,7 @@ const TourModal = ({
               Select a Placeholder
             </h3>
             <p style={{ fontSize: "1rem", marginBottom: "20px" }}>
-              Scroll down to the document and highlight the <strong>[Employer Name]</strong> placeholder by selecting it with your mouse.
+              Scroll down to the document and highlight the <strong>[Employer Name]</strong> placeholder by selecting it with your mouse. It’s highlighted in yellow to help you find it.
             </p>
             <button style={buttonStyle} onClick={onNext}>
               I’ve Selected It
@@ -207,6 +207,51 @@ const LevelTwoPart_Two = () => {
     }
   }, []);
 
+  // Highlight [Employer Name] and ensure it’s selectable
+  useEffect(() => {
+    const highlightEmployerName = () => {
+      const elements = document.querySelectorAll("span, p, div");
+      const employerElement = Array.from(elements).find((el) =>
+        el.textContent?.includes("[Employer Name]")
+      ) as HTMLElement | undefined;
+
+      if (employerElement) {
+        // Wrap [Employer Name] in a span if it’s not already
+        const textNode = Array.from(employerElement.childNodes).find(
+          (node) => node.textContent?.includes("[Employer Name]")
+        );
+        if (textNode && textNode.nodeType === Node.TEXT_NODE) {
+          const span = document.createElement("span");
+          span.className = "employer-name-highlight";
+          span.textContent = "[Employer Name]";
+          const remainingText = textNode.textContent?.split("[Employer Name]");
+          textNode.replaceWith(
+            remainingText?.[0] || "",
+            span,
+            remainingText?.[1] || ""
+          );
+        }
+        employerElement.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    };
+
+    // Run immediately and set up a MutationObserver in case the DOM changes
+    highlightEmployerName();
+
+    const observer = new MutationObserver(() => {
+      highlightEmployerName();
+    });
+
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+    });
+
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
+
   // Monitor text selection to detect when [Employer Name] is highlighted
   useEffect(() => {
     const handleSelection = () => {
@@ -217,8 +262,8 @@ const LevelTwoPart_Two = () => {
       }
     };
 
-    document.addEventListener("mouseup", handleSelection);
-    return () => document.removeEventListener("mouseup", handleSelection);
+    document.addEventListener("selectionchange", handleSelection);
+    return () => document.removeEventListener("selectionchange", handleSelection);
   }, [tourStep]);
 
   const getDocumentText = () => {
@@ -432,6 +477,25 @@ const LevelTwoPart_Two = () => {
           : "bg-gradient-to-br from-indigo-50 via-teal-50 to-pink-50"
       }`}
     >
+      <style>
+        {`
+          .employment-agreement-container * {
+            user-select: text !important;
+            -webkit-user-select: text !important;
+            -moz-user-select: text !important;
+            -ms-user-select: text !important;
+          }
+          .employer-name-highlight {
+            background-color: #ffeb3b;
+            padding: 2px 4px;
+            border-radius: 3px;
+            user-select: text !important;
+            -webkit-user-select: text !important;
+            -moz-user-select: text !important;
+            -ms-user-select: text !important;
+          }
+        `}
+      </style>
       <Navbar
         level={"/Level-Two-Part-Two"}
         questionnaire={"/Questionnaire"}
@@ -606,7 +670,7 @@ const LevelTwoPart_Two = () => {
       </div>
       <div className="max-w-5xl mx-auto mt-10 px-8 pb-20" ref={documentRef}>
         <div
-          className={`p-6 rounded-3xl shadow-xl border ${
+          className={`p-6 rounded-3xl shadow-xl border employment-agreement-container ${
             isDarkMode
               ? "bg-gray-800/80 backdrop-blur-md border-gray-700/20 bg-gradient-to-br from-gray-700/70 via-gray-800/70 to-gray-900/70"
               : "bg-white/80 backdrop-blur-md border-teal-100/20 bg-gradient-to-br from-teal-50/70 via-cyan-50/70 to-indigo-50/70"
