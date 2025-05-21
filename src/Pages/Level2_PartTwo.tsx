@@ -271,7 +271,13 @@ const LevelTwoPart_Two = () => {
       }
 
       // Find the actual elements using correct DOM methods
-      const employerNameElement = document.getElementById("tour-target-employer-name");
+      const employerNameElement = document.evaluate(
+        "//text()[contains(., '[Employer Name]')]",
+        document,
+        null,
+        XPathResult.FIRST_ORDERED_NODE_TYPE,
+        null
+      ).singleNodeValue?.parentElement;
       
       const editButtonElement = document.getElementById("edit-placeholder");
       
@@ -288,7 +294,7 @@ const LevelTwoPart_Two = () => {
       const tour = new Shepherd.Tour({
         defaultStepOptions: {
           cancelIcon: { enabled: true },
-          classes: isDarkMode ? "shepherd-dark" : "shepherd-light",
+          classes: "shadow-md bg-purple-dark",
           scrollTo: { behavior: "smooth", block: "center" },
         },
         useModalOverlay: true,
@@ -323,7 +329,7 @@ const LevelTwoPart_Two = () => {
           </div>
         `,
         attachTo: {
-          element: "#tour-target-employer-name",
+          element: employerNameElement,
           on: "bottom",
         },
         buttons: [
