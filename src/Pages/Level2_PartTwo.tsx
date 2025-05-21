@@ -60,7 +60,7 @@ const TourOverlay = ({
     width: "100%",
     height: "100%",
     backgroundColor: "rgba(0, 0, 0, 0.5)",
-    zIndex: 9999, // Increased z-index to ensure visibility
+    zIndex: 9999,
     pointerEvents: step === 2 || step === 3 ? "none" : "auto",
   };
 
@@ -73,7 +73,7 @@ const TourOverlay = ({
     boxShadow: "0 4px 6px rgba(0, 0, 0, 0.3)",
     maxWidth: "400px",
     pointerEvents: "auto",
-    border: "2px solid #3b82f6", // Added border for visibility
+    border: "2px solid #3b82f6",
   };
 
   const highlightStyle: React.CSSProperties = {
@@ -462,7 +462,7 @@ const LevelTwoPart_Two = () => {
 
     findElements();
 
-    const observer = new MutationObserver((mutations, obs) => {
+    const observer = new MutationObserver((_, obs) => {
       if (!employerNameElement || !editButtonElement) {
         findElements();
       } else {
@@ -719,9 +719,8 @@ const LevelTwoPart_Two = () => {
           employerNameElement={employerNameElement}
           editButtonElement={editButtonElement}
         />
-      ) : (
-        console.log("TourOverlay not rendered: tourStep is", tourStep)
-      )}
+      ) : null}
+      {tourStep === 0 && console.log("TourOverlay not rendered: tourStep is", tourStep)}
     </div>
   );
 };
