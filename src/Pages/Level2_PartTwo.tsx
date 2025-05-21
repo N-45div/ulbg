@@ -4,22 +4,191 @@ import { useState, useContext, useRef, useEffect } from "react";
 import Navbar from "../components/Navbar";
 import { useHighlightedText } from "../context/HighlightedTextContext";
 import { useQuestionType } from "../context/QuestionTypeContext";
-import EmploymentAgreement from "../utils/EmploymentAgreement"; // Ensure this file exports a React component or valid JSX
+import EmploymentAgreement from "../utils/EmploymentAgreement";
 import { determineQuestionType } from "../utils/questionTypeUtils";
 import { ThemeContext } from "../context/ThemeContext";
 import AIAnalysisPanel from "../components/AIAnalysisPanel";
 import { useLocation, useNavigate } from "react-router";
 import { CrispChat } from "../bot/knowledge";
 import { useScore } from "../context/ScoreContext";
-import Shepherd from "shepherd.js";
-import "shepherd.js/dist/css/shepherd.css";
 
 const icons = [
   { icon: <FaPenToSquare />, label: "Edit PlaceHolder" },
   { icon: <TbSettingsMinus />, label: "Small Condition" },
   { icon: <TbSettingsPlus />, label: "Big Condition" },
-  // { icon: <ImLoop2 />, label: "Loop" },
 ];
+
+// Custom TourOverlay Component
+const TourOverlay = ({
+  step,
+  onNext,
+  onComplete,
+  isDarkMode,
+  employerNameElement,
+  editButtonElement,
+}: {
+  step: number;
+  onNext: () => void;
+  onComplete: () => void;
+  isDarkMode: boolean;
+  employerNameElement: HTMLElement | null;
+  editButtonElement: HTMLElement | null;
+}) => {
+  useEffect(() => {
+    if (step !== 2) return;
+
+    const handleSelection = () => {
+      const selection = window.getSelection();
+      const selectedText = selection?.toString().trim();
+      console.log("Tour Step 2 - Selected text:", selectedText);
+      if (selectedText === "[Employer Name]") {
+        console.log("Tour Step 2 - Selection matches [Employer Name], advancing to step 3");
+        onNext();
+      }
+    };
+
+    document.addEventListener("mouseup", handleSelection);
+    return () => document.removeEventListener("mouseup", handleSelection);
+  }, [step, onNext]);
+
+  const overlayStyle: React.CSSProperties = {
+    position: "fixed",
+    top: 0,
+    left: 0,
+    width: "100%",
+    height: "100%",
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    zIndex: 1000,
+    pointerEvents: step === 2 || step === 3 ? "none" : "auto",
+  };
+
+  const messageStyle: React.CSSProperties = {
+    position: "absolute",
+    backgroundColor: isDarkMode ? "#1f2937" : "#ffffff",
+    color: isDarkMode ? "#ffffff" : "#000000",
+    padding: "20px",
+    borderRadius: "8px",
+    boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
+    maxWidth: "400px",
+    pointerEvents: "auto",
+  };
+
+  const highlightStyle: React.CSSProperties = {
+    position: "absolute",
+    border: "3px solid #3b82f6",
+    borderRadius: "4px",
+    pointerEvents: "auto",
+    zIndex: 1001,
+    backgroundColor: "rgba(59, 130, 246, 0.2)",
+    animation: "pulse 1.5s infinite",
+  };
+
+  const buttonStyle: React.CSSProperties = {
+    backgroundColor: "#3b82f6",
+    color: "#ffffff",
+    padding: "8px 16px",
+    borderRadius: "4px",
+    border: "none",
+    cursor: "pointer",
+    marginTop: "10px",
+  };
+
+  let messagePosition: React.CSSProperties = { top: "20%", left: "50%", transform: "translateX(-50%)" };
+  let highlightPosition: React.CSSProperties | undefined;
+
+  if (step === 2 && employerNameElement) {
+    const rect = employerNameElement.getBoundingClientRect();
+    messagePosition = { top: rect.bottom + window.scrollY + 10, left: rect.left + rect.width / 2, transform: "translateX(-50%)" };
+    highlightPosition = {
+      top: rect.top + window.scrollY,
+      left: rect.left,
+      width: rect.width,
+      height: rect.height,
+    };
+    employerNameElement.scrollIntoView({ behavior: "smooth", block: "center" });
+  } else if (step === 3 && editButtonElement) {
+    const rect = editButtonElement.getBoundingClientRect();
+    messagePosition = { top: rect.bottom + window.scrollY + 10, left: rect.left + rect.width / 2, transform: "translateX(-50%)" };
+    highlightPosition = {
+      top: rect.top + window.scrollY,
+      left: rect.left,
+      width: rect.width,
+      height: rect.height,
+    };
+    editButtonElement.scrollIntoView({ behavior: "smooth", block: "center" });
+  } else if (step === 4) {
+    messagePosition = { top: "20%", left: "50%", transform: "translateX(-50%)" };
+  }
+
+  return (
+    <div style={overlayStyle}>
+      <style>
+        {`
+          @keyframes pulse {
+            0% {
+              box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
+            }
+            70% {
+              box-shadow: 0 0 0 10px rgba(59, 130, 246, 0);
+            }
+            100% {
+              box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+            }
+          }
+        `}
+      </style>
+      <div style={{ ...messageStyle, ...messagePosition }}>
+        {step === 1 && (
+          <>
+            <h3 style={{ fontSize: "1.5rem", fontWeight: "bold", marginBottom: "10px" }}>
+              Welcome to the Document Tab!
+            </h3>
+            <p style={{ fontSize: "1rem", marginBottom: "10px" }}>
+              Here, you’ll learn to automate placeholders in the employment agreement. Let’s start by selecting a placeholder.
+            </p>
+            <button style={buttonStyle} onClick={onNext}>
+              Next →
+            </button>
+          </>
+        )}
+        {step === 2 && (
+          <>
+            <h3 style={{ fontSize: "1.5rem", fontWeight: "bold", marginBottom: "10px" }}>
+              Select a Placeholder
+            </h3>
+            <p style={{ fontSize: "1rem", marginBottom: "10px" }}>
+              Find and highlight the [Employer Name] placeholder in the document below.
+            </p>
+          </>
+        )}
+        {step === 3 && (
+          <>
+            <h3 style={{ fontSize: "1.5rem", fontWeight: "bold", marginBottom: "10px" }}>
+              Click the Edit Placeholder Button
+            </h3>
+            <p style={{ fontSize: "1rem", marginBottom: "10px" }}>
+              Now, click the Edit Placeholder button to add it to your selected placeholders.
+            </p>
+          </>
+        )}
+        {step === 4 && (
+          <>
+            <h3 style={{ fontSize: "1.5rem", fontWeight: "bold", marginBottom: "10px" }}>
+              Great Job!
+            </h3>
+            <p style={{ fontSize: "1rem", marginBottom: "10px" }}>
+              You’ve successfully selected a placeholder. Let’s move to the Questionnaire tab to create a question for it.
+            </p>
+            <button style={buttonStyle} onClick={onComplete}>
+              Go to Questionnaire →
+            </button>
+          </>
+        )}
+      </div>
+      {highlightPosition && <div style={{ ...highlightStyle, ...highlightPosition }} />}
+    </div>
+  );
+};
 
 const LevelTwoPart_Two = () => {
   const { isDarkMode } = useContext(ThemeContext);
@@ -29,7 +198,9 @@ const LevelTwoPart_Two = () => {
   const { highlightedTexts, addHighlightedText } = useHighlightedText();
   const { selectedTypes } = useQuestionType();
   const documentRef = useRef<HTMLDivElement>(null);
-  const [tourStarted, setTourStarted] = useState(false); // Track if the tour has started
+  const [tourStep, setTourStep] = useState(0);
+  const [employerNameElement, setEmployerNameElement] = useState<HTMLElement | null>(null);
+  const [editButtonElement, setEditButtonElement] = useState<HTMLElement | null>(null);
 
   // Scoring system
   const { levelTwoScore, setLevelTwoScore } = useScore();
@@ -114,19 +285,21 @@ const LevelTwoPart_Two = () => {
       return;
     }
 
-    // Scoring validation
     const isCorrectButton =
       (label === "Edit PlaceHolder" && hasValidSpanClass) ||
       (label === "Small Condition" && hasValidBrackets) ||
       (label === "Big Condition" && hasValidBrackets);
 
-    // Handle scoring
     if (isCorrectButton) {
       if (label === "Edit PlaceHolder" && !foundPlaceholders.includes(textWithoutBrackets)) {
         setScore((prevScore) => prevScore + 3);
         setScoreChange(3);
         setTimeout(() => setScoreChange(null), 2000);
         setFoundPlaceholders((prev) => [...prev, textWithoutBrackets]);
+        if (tourStep === 3) {
+          console.log("Tour Step 3 - Edit Placeholder button clicked, advancing to step 4");
+          setTourStep(4);
+        }
       } else if (label === "Small Condition" && !foundSmallConditions.includes(textWithoutBrackets)) {
         setScore((prevScore) => prevScore + 3);
         setScoreChange(3);
@@ -139,7 +312,6 @@ const LevelTwoPart_Two = () => {
         setFoundBigConditions((prev) => [...prev, textWithoutBrackets]);
       }
     } else {
-      // Wrong button clicked - deduct 2 points
       const newScore = Math.max(0, score - 2);
       setScore(newScore);
       if (score > 0) {
@@ -251,233 +423,65 @@ const LevelTwoPart_Two = () => {
     }
   };
 
-  // Product Tour using Shepherd.js
+  // Custom Tour Logic with MutationObserver
   useEffect(() => {
-    // Get the selected part
     const selectedPart = parseInt(localStorage.getItem("selectedPart") || "0", 10);
     console.log("Selected Part:", selectedPart);
 
-    // Only run the tour for Level 1 (placeholders) or Demo mode
     if (selectedPart !== 1 && selectedPart !== 4) {
       console.log("Tour not started: selectedPart is not 1 or 4");
       return;
     }
 
-    // Wait for the DOM to be fully loaded
-    const startTour = () => {
-      if (tourStarted) {
-        console.log("Tour already started, not starting again");
-        return;
-      }
+    const findElements = () => {
+      const employerElement = Array.from(document.querySelectorAll("span, p, div")).find(
+        (el) => el.textContent?.includes("[Employer Name]")
+      ) as HTMLElement | undefined;
+      const editButton = document.getElementById("edit-placeholder") as HTMLElement | null;
 
-      // Find the actual elements using correct DOM methods
-      const employerNameElement = document.evaluate(
-        "//text()[contains(., '[Employer Name]')]",
-        document,
-        null,
-        XPathResult.FIRST_ORDERED_NODE_TYPE,
-        null
-      ).singleNodeValue?.parentElement;
-      
-      const editButtonElement = document.getElementById("edit-placeholder");
-      
-      console.log("Employer Name Element:", employerNameElement);
-      console.log("Edit Placeholder Button:", editButtonElement);
-
-      if (!employerNameElement || !editButtonElement) {
-        console.log("Required elements not found, delaying tour start");
-        setTimeout(startTour, 1000); // Retry after 1 second
-        return;
-      }
-
-      // Create and configure the tour
-      const tour = new Shepherd.Tour({
-        defaultStepOptions: {
-          cancelIcon: { enabled: true },
-          classes: "shadow-md bg-purple-dark",
-          scrollTo: { behavior: "smooth", block: "center" },
-        },
-        useModalOverlay: true,
-        confirmCancel: false,
-        tourName: `document-tab-tour-${Date.now()}`,
-      });
-
-      // Step 1: Welcome to the Document Tab
-      tour.addStep({
-        id: "welcome",
-        text: `
-          <div class="welcome-message">
-            <strong class="welcome-title">Welcome to the Document Tab!</strong>
-            <p class="welcome-text">Here, you'll learn to automate placeholders in the employment agreement. Let's start by selecting a placeholder.</p>
-          </div>
-        `,
-        buttons: [
-          {
-            text: "Next →",
-            action: tour.next,
-          },
-        ],
-      });
-
-      // Step 2: Select the [Employer Name] Placeholder
-      tour.addStep({
-        id: "select-placeholder",
-        text: `
-          <div class="welcome-message">
-            <strong class="welcome-title">Select a Placeholder</strong>
-            <p class="welcome-text">Find and highlight the [Employer Name] placeholder in the document below.</p>
-          </div>
-        `,
-        attachTo: {
-          element: employerNameElement,
-          on: "bottom",
-        },
-        buttons: [
-          {
-            text: "Next →",
-            action: () => {
-              const selection = window.getSelection();
-              if (selection && selection.toString().trim() === "[Employer Name]") {
-                tour.next();
-              } else {
-                alert("Please select the [Employer Name] placeholder in the document before proceeding.");
-              }
-            },
-          },
-        ],
-        beforeShowPromise: function() {
-          // Scroll to the element to ensure it's visible
-          employerNameElement.scrollIntoView({
-            behavior: 'smooth',
-            block: 'center'
-          });
-          
-          // Add a highlight to make it more noticeable
-          employerNameElement.classList.add('highlight-element');
-          
-          return new Promise(resolve => {
-            setTimeout(resolve, 500); // Short delay to ensure smooth animation
-          });
-        }
-      });
-
-      // Step 3: Click the Edit Placeholder Button
-      tour.addStep({
-        id: "click-edit-placeholder",
-        text: `
-          <div class="welcome-message">
-            <strong class="welcome-title">Click the Edit Placeholder Button</strong>
-            <p class="welcome-text">Now, click the Edit Placeholder button to add it to your selected placeholders.</p>
-          </div>
-        `,
-        attachTo: {
-          element: "#edit-placeholder",
-          on: "bottom",
-        },
-        buttons: [
-          {
-            text: "Add Placeholder →",
-            action: () => {
-              const editButton = document.querySelector("#edit-placeholder") as HTMLButtonElement;
-              if (editButton) {
-                editButton.click();
-                tour.next();
-              } else {
-                console.error("Edit Placeholder button not found during tour");
-              }
-            },
-          },
-        ],
-        beforeShowPromise: function() {
-          // Scroll to the edit button to ensure it's visible
-          editButtonElement.scrollIntoView({
-            behavior: 'smooth',
-            block: 'center'
-          });
-          
-          // Add a highlight animation
-          editButtonElement.classList.add('pulse-animation');
-          
-          return new Promise(resolve => {
-            setTimeout(resolve, 500);
-          });
-        }
-      });
-
-      // Step 4: Wrap-Up
-      tour.addStep({
-        id: "wrap-up",
-        text: `
-          <div class="welcome-message">
-            <strong class="welcome-title">Great Job!</strong>
-            <p class="welcome-text">You've successfully selected a placeholder. Let's move to the Questionnaire tab to create a question for it.</p>
-          </div>
-        `,
-        attachTo: {
-          element: ".max-w-5xl.mx-auto.p-8.rounded-3xl.shadow-2xl.border",
-          on: "top",
-        },
-        buttons: [
-          {
-            text: "Go to Questionnaire →",
-            action: () => {
-              navigate("/Questionnaire");
-              tour.complete();
-            },
-          },
-        ],
-      });
-
-      // Start the tour
-      try {
-        console.log("Starting Shepherd.js tour");
-        setTourStarted(true);
-        tour.start();
-        
-        // Add CSS for animations
-        const style = document.createElement('style');
-        style.innerHTML = `
-          .highlight-element {
-            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.5);
-            animation: pulse 1.5s infinite;
-          }
-          
-          .pulse-animation {
-            animation: pulse 1.5s infinite;
-          }
-          
-          @keyframes pulse {
-            0% {
-              box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
-            }
-            70% {
-              box-shadow: 0 0 0 10px rgba(59, 130, 246, 0);
-            }
-            100% {
-              box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
-            }
-          }
-        `;
-        document.head.appendChild(style);
-      } catch (error) {
-        console.error("Error starting Shepherd.js tour:", error);
+      if (employerElement && editButton) {
+        console.log("Employer Name Element:", employerElement);
+        console.log("Edit Placeholder Button:", editButton);
+        setEmployerNameElement(employerElement);
+        setEditButtonElement(editButton);
+        setTourStep(1);
+        console.log("Custom tour started at step 1");
+      } else {
+        console.log("Elements not found, continuing to observe...");
       }
     };
 
-    // Use a longer timeout to ensure DOM is ready
-    setTimeout(startTour, 1500);
+    findElements();
+
+    const observer = new MutationObserver(() => {
+      if (!employerNameElement || !editButtonElement) {
+        findElements();
+      }
+    });
+
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+    });
 
     return () => {
-      if (Shepherd.activeTour) {
-        Shepherd.activeTour.complete();
-      }
-      // Clean up any added styling
-      const highlightedElements = document.querySelectorAll('.highlight-element, .pulse-animation');
-      highlightedElements.forEach(el => {
-        el.classList.remove('highlight-element', 'pulse-animation');
-      });
+      observer.disconnect();
     };
-  }, [tourStarted, navigate, isDarkMode]);
+  }, [employerNameElement, editButtonElement]);
+
+  const handleTourNext = () => {
+    setTourStep((prev) => {
+      const nextStep = prev + 1;
+      console.log(`Advancing tour to step ${nextStep}`);
+      return nextStep;
+    });
+  };
+
+  const handleTourComplete = () => {
+    console.log("Tour completed, navigating to /Questionnaire");
+    setTourStep(0);
+    navigate("/Questionnaire");
+  };
 
   const selectedPart = parseInt(localStorage.getItem("selectedPart") || "0", 10);
 
@@ -495,7 +499,6 @@ const LevelTwoPart_Two = () => {
         live_generation={"/Live_Generation"}
       />
 
-      {/* Label for current level */}
       {selectedPart === 1 && (
         <h1
           className={`text-center mt-24 text-3xl font-bold tracking-wide ${
@@ -524,7 +527,6 @@ const LevelTwoPart_Two = () => {
         </h1>
       )}
 
-      {/* Score display */}
       <div className="fixed top-16 left-6 z-50 px-6 py-3">
         <div
           className={`p-3 rounded-full shadow-lg flex items-center ${
@@ -607,7 +609,7 @@ const LevelTwoPart_Two = () => {
           >
             {[...new Set(highlightedTexts)].map((text, index) => {
               const { primaryValue } = determineQuestionType(text);
-              const questionType = selectedTypes[index] || "Text"; // Default to "Text" if undefined
+              const questionType = selectedTypes[index] || "Text";
               return (
                 <li key={index} className="flex items-center justify-between">
                   <div>
@@ -690,6 +692,17 @@ const LevelTwoPart_Two = () => {
           Home
         </button>
       </div>
+
+      {tourStep > 0 && (
+        <TourOverlay
+          step={tourStep}
+          onNext={handleTourNext}
+          onComplete={handleTourComplete}
+          isDarkMode={isDarkMode}
+          employerNameElement={employerNameElement}
+          editButtonElement={editButtonElement}
+        />
+      )}
     </div>
   );
 };
