@@ -8,9 +8,11 @@ import EmploymentAgreement from "../utils/EmploymentAgreement"; // Ensure this f
 import { determineQuestionType } from "../utils/questionTypeUtils";
 import { ThemeContext } from "../context/ThemeContext";
 import AIAnalysisPanel from "../components/AIAnalysisPanel";
-import { useLocation } from "react-router";
+import { useLocation, useNavigate } from "react-router";
 import { CrispChat } from "../bot/knowledge";
 import { useScore } from "../context/ScoreContext";
+import Shepherd from "shepherd.js";
+import "shepherd.js/dist/css/shepherd.css";
 
 const icons = [
   { icon: <FaPenToSquare />, label: "Edit PlaceHolder" },
@@ -22,10 +24,12 @@ const icons = [
 const LevelTwoPart_Two = () => {
   const { isDarkMode } = useContext(ThemeContext);
   const location = useLocation();
+  const navigate = useNavigate();
   const [tooltip, setTooltip] = useState<string | null>(null);
   const { highlightedTexts, addHighlightedText } = useHighlightedText();
   const { selectedTypes } = useQuestionType();
   const documentRef = useRef<HTMLDivElement>(null);
+  const [tourStarted, setTourStarted] = useState(false); // Track if the tour has started
 
   // Scoring system
   const { levelTwoScore, setLevelTwoScore } = useScore();
@@ -34,7 +38,6 @@ const LevelTwoPart_Two = () => {
   const [foundPlaceholders, setFoundPlaceholders] = useState<string[]>([]);
   const [foundSmallConditions, setFoundSmallConditions] = useState<string[]>([]);
   const [foundBigConditions, setFoundBigConditions] = useState<string[]>([]);
-  
 
   useEffect(() => {
     setLevelTwoScore(score);
@@ -147,10 +150,6 @@ const LevelTwoPart_Two = () => {
     }
 
     if (label === "Edit PlaceHolder") {
-      // if (!(selectedText.startsWith("[") && selectedText.endsWith("]"))) {
-      //   console.log("Invalid Edit Placeholder selection:", selectedText);
-      //   return;
-      // }
       if (highlightedTexts.includes(textWithoutBrackets)) {
         console.log("Placeholder already highlighted:", textWithoutBrackets);
         alert("This placeholder has already been added!");
@@ -225,8 +224,8 @@ const LevelTwoPart_Two = () => {
       range.deleteContents();
       range.insertNode(fragment);
 
-      const probationClauseContent = "The first [Probation Period Length] of employment will be a probationary period. The Company shall assess the Employee’s performance and suitability during this time. Upon successful completion, the Employee will be confirmed in their role.";
-      const pensionClauseContent = "The Employee will be enrolled in the Company’s pension scheme in accordance with auto-enrolment legislation.";
+      const probationClauseContent = "The first [Probation Period Length] of employment will be a probationary period. The Company shall assess the Employee's performance and suitability during this time. Upon successful completion, the Employee will be confirmed in their role.";
+      const pensionClauseContent = "The Employee will be enrolled in the Company's pension scheme in accordance with auto-enrolment legislation.";
 
       const normalizeText = (text: string) => text.replace(/\s+/g, "");
       const normalizedSelectedText = normalizeText(textWithoutBrackets);
@@ -251,6 +250,234 @@ const LevelTwoPart_Two = () => {
       range.insertNode(span);
     }
   };
+
+  // Product Tour using Shepherd.js
+  useEffect(() => {
+    // Get the selected part
+    const selectedPart = parseInt(localStorage.getItem("selectedPart") || "0", 10);
+    console.log("Selected Part:", selectedPart);
+
+    // Only run the tour for Level 1 (placeholders) or Demo mode
+    if (selectedPart !== 1 && selectedPart !== 4) {
+      console.log("Tour not started: selectedPart is not 1 or 4");
+      return;
+    }
+
+    // Wait for the DOM to be fully loaded
+    const startTour = () => {
+      if (tourStarted) {
+        console.log("Tour already started, not starting again");
+        return;
+      }
+
+      // Find the actual elements using correct DOM methods
+      const employerNameElement = document.evaluate(
+        "//text()[contains(., '[Employer Name]')]",
+        document,
+        null,
+        XPathResult.FIRST_ORDERED_NODE_TYPE,
+        null
+      ).singleNodeValue?.parentElement;
+      
+      const editButtonElement = document.getElementById("edit-placeholder");
+      
+      console.log("Employer Name Element:", employerNameElement);
+      console.log("Edit Placeholder Button:", editButtonElement);
+
+      if (!employerNameElement || !editButtonElement) {
+        console.log("Required elements not found, delaying tour start");
+        setTimeout(startTour, 1000); // Retry after 1 second
+        return;
+      }
+
+      // Create and configure the tour
+      const tour = new Shepherd.Tour({
+        defaultStepOptions: {
+          cancelIcon: { enabled: true },
+          classes: "shadow-md bg-purple-dark",
+          scrollTo: { behavior: "smooth", block: "center" },
+        },
+        useModalOverlay: true,
+        confirmCancel: false,
+        tourName: `document-tab-tour-${Date.now()}`,
+      });
+
+      // Step 1: Welcome to the Document Tab
+      tour.addStep({
+        id: "welcome",
+        text: `
+          <div class="welcome-message">
+            <strong class="welcome-title">Welcome to the Document Tab!</strong>
+            <p class="welcome-text">Here, you'll learn to automate placeholders in the employment agreement. Let's start by selecting a placeholder.</p>
+          </div>
+        `,
+        buttons: [
+          {
+            text: "Next →",
+            action: tour.next,
+          },
+        ],
+      });
+
+      // Step 2: Select the [Employer Name] Placeholder
+      tour.addStep({
+        id: "select-placeholder",
+        text: `
+          <div class="welcome-message">
+            <strong class="welcome-title">Select a Placeholder</strong>
+            <p class="welcome-text">Find and highlight the [Employer Name] placeholder in the document below.</p>
+          </div>
+        `,
+        attachTo: {
+          element: employerNameElement,
+          on: "bottom",
+        },
+        buttons: [
+          {
+            text: "Next →",
+            action: () => {
+              const selection = window.getSelection();
+              if (selection && selection.toString().trim() === "[Employer Name]") {
+                tour.next();
+              } else {
+                alert("Please select the [Employer Name] placeholder in the document before proceeding.");
+              }
+            },
+          },
+        ],
+        beforeShowPromise: function() {
+          // Scroll to the element to ensure it's visible
+          employerNameElement.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center'
+          });
+          
+          // Add a highlight to make it more noticeable
+          employerNameElement.classList.add('highlight-element');
+          
+          return new Promise(resolve => {
+            setTimeout(resolve, 500); // Short delay to ensure smooth animation
+          });
+        }
+      });
+
+      // Step 3: Click the Edit Placeholder Button
+      tour.addStep({
+        id: "click-edit-placeholder",
+        text: `
+          <div class="welcome-message">
+            <strong class="welcome-title">Click the Edit Placeholder Button</strong>
+            <p class="welcome-text">Now, click the Edit Placeholder button to add it to your selected placeholders.</p>
+          </div>
+        `,
+        attachTo: {
+          element: "#edit-placeholder",
+          on: "bottom",
+        },
+        buttons: [
+          {
+            text: "Add Placeholder →",
+            action: () => {
+              const editButton = document.querySelector("#edit-placeholder") as HTMLButtonElement;
+              if (editButton) {
+                editButton.click();
+                tour.next();
+              } else {
+                console.error("Edit Placeholder button not found during tour");
+              }
+            },
+          },
+        ],
+        beforeShowPromise: function() {
+          // Scroll to the edit button to ensure it's visible
+          editButtonElement.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center'
+          });
+          
+          // Add a highlight animation
+          editButtonElement.classList.add('pulse-animation');
+          
+          return new Promise(resolve => {
+            setTimeout(resolve, 500);
+          });
+        }
+      });
+
+      // Step 4: Wrap-Up
+      tour.addStep({
+        id: "wrap-up",
+        text: `
+          <div class="welcome-message">
+            <strong class="welcome-title">Great Job!</strong>
+            <p class="welcome-text">You've successfully selected a placeholder. Let's move to the Questionnaire tab to create a question for it.</p>
+          </div>
+        `,
+        attachTo: {
+          element: ".max-w-5xl.mx-auto.p-8.rounded-3xl.shadow-2xl.border",
+          on: "top",
+        },
+        buttons: [
+          {
+            text: "Go to Questionnaire →",
+            action: () => {
+              navigate("/Questionnaire");
+              tour.complete();
+            },
+          },
+        ],
+      });
+
+      // Start the tour
+      try {
+        console.log("Starting Shepherd.js tour");
+        setTourStarted(true);
+        tour.start();
+        
+        // Add CSS for animations
+        const style = document.createElement('style');
+        style.innerHTML = `
+          .highlight-element {
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.5);
+            animation: pulse 1.5s infinite;
+          }
+          
+          .pulse-animation {
+            animation: pulse 1.5s infinite;
+          }
+          
+          @keyframes pulse {
+            0% {
+              box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
+            }
+            70% {
+              box-shadow: 0 0 0 10px rgba(59, 130, 246, 0);
+            }
+            100% {
+              box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+            }
+          }
+        `;
+        document.head.appendChild(style);
+      } catch (error) {
+        console.error("Error starting Shepherd.js tour:", error);
+      }
+    };
+
+    // Use a longer timeout to ensure DOM is ready
+    setTimeout(startTour, 1500);
+
+    return () => {
+      if (Shepherd.activeTour) {
+        Shepherd.activeTour.complete();
+      }
+      // Clean up any added styling
+      const highlightedElements = document.querySelectorAll('.highlight-element, .pulse-animation');
+      highlightedElements.forEach(el => {
+        el.classList.remove('highlight-element', 'pulse-animation');
+      });
+    };
+  }, [tourStarted, navigate, isDarkMode]);
 
   const selectedPart = parseInt(localStorage.getItem("selectedPart") || "0", 10);
 
@@ -319,13 +546,13 @@ const LevelTwoPart_Two = () => {
       <div className="fixed flex top-16 right-0 z-50 px-6 py-3 space-x-6">
         {icons.map(({ icon, label }, index) => {
           const shouldRender =
-          (label === "Edit PlaceHolder" && selectedPart === 1) ||
-          (label === "Small Condition" && selectedPart === 2) ||
-          (label === "Big Condition" && selectedPart === 3) ||
-          selectedPart === 4;
-      
+            (label === "Edit PlaceHolder" && selectedPart === 1) ||
+            (label === "Small Condition" && selectedPart === 2) ||
+            (label === "Big Condition" && selectedPart === 3) ||
+            selectedPart === 4;
+
           if (!shouldRender) return null;
-          
+
           return (
             <div key={index} className="relative flex items-center">
               <button
@@ -353,7 +580,6 @@ const LevelTwoPart_Two = () => {
                 </div>
               )}
             </div>
-
           );
         })}
       </div>
@@ -464,7 +690,6 @@ const LevelTwoPart_Two = () => {
           Home
         </button>
       </div>
-
     </div>
   );
 };
