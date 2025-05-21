@@ -131,7 +131,7 @@ const EmploymentAgreement: React.FC = () => {
         <h2 className="text-2xl font-bold">PARTIES</h2>
         <p id="employer-name-placeholder">
           <strong>Employer:</strong>{" "}
-          <span className="placeholder-employer-name">[Employer Name]</span>, a company incorporated and registered in{" "}
+          <span id="tour-target-employer-name" className="placeholder-employer-name">[Employer Name]</span>, a company incorporated and registered in{" "}
           <span className="placeholder-registered-address">Registered Address</span>, State of
           California ("Company").
         </p>
