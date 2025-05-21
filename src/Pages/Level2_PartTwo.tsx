@@ -25,14 +25,12 @@ const TourModal = ({
   onSkip,
   onComplete,
   isDarkMode,
-  selectionFailed,
 }: {
   step: number;
   onNext: () => void;
   onSkip: () => void;
   onComplete: () => void;
   isDarkMode: boolean;
-  selectionFailed: boolean;
 }) => {
   const modalStyle: React.CSSProperties = {
     position: "fixed",
@@ -81,16 +79,6 @@ const TourModal = ({
     textDecoration: "underline",
   };
 
-  const warningButtonStyle: React.CSSProperties = {
-    backgroundColor: "#f59e0b",
-    color: "#ffffff",
-    padding: "8px 16px",
-    borderRadius: "4px",
-    border: "none",
-    cursor: "pointer",
-    margin: "5px",
-  };
-
   return (
     <>
       <div style={backdropStyle} />
@@ -117,16 +105,11 @@ const TourModal = ({
               Select a Placeholder
             </h3>
             <p style={{ fontSize: "1rem", marginBottom: "20px" }}>
-              Scroll down to the document and highlight the <strong>[Employer Name]</strong> placeholder by selecting it with your mouse. It’s highlighted in yellow to help you find it.
+              Scroll down to the document and highlight the <strong>[Employer Name]</strong> placeholder by selecting it with your mouse.
             </p>
             <button style={buttonStyle} onClick={onNext}>
               I’ve Selected It
             </button>
-            {selectionFailed && (
-              <button style={warningButtonStyle} onClick={onNext}>
-                I Can’t Select It, Proceed Anyway
-              </button>
-            )}
             <button style={skipButtonStyle} onClick={onSkip}>
               Skip Tour
             </button>
@@ -179,7 +162,6 @@ const LevelTwoPart_Two = () => {
   const documentRef = useRef<HTMLDivElement>(null);
   const [tourStep, setTourStep] = useState(0);
   const [hasSelectedPlaceholder, setHasSelectedPlaceholder] = useState(false);
-  const [selectionAttempts, setSelectionAttempts] = useState(0);
 
   // Scoring system
   const { levelTwoScore, setLevelTwoScore } = useScore();
@@ -225,75 +207,6 @@ const LevelTwoPart_Two = () => {
     }
   }, []);
 
-  // Highlight [Employer Name] and ensure it’s selectable
-  useEffect(() => {
-    const highlightEmployerName = () => {
-      const elements = document.querySelectorAll("span, p, div");
-      const employerElement = Array.from(elements).find((el) =>
-        el.textContent?.includes("[Employer Name]")
-      ) as HTMLElement | undefined;
-
-      if (employerElement) {
-        // Ensure the element is selectable
-        employerElement.style.userSelect = "text";
-        employerElement.style.webkitUserSelect = "text";
-        employerElement.style.pointerEvents = "auto";
-
-        // Wrap [Employer Name] in a span if it’s not already
-        const textNode = Array.from(employerElement.childNodes).find(
-          (node) => node.textContent?.includes("[Employer Name]")
-        );
-        if (textNode && textNode.nodeType === Node.TEXT_NODE) {
-          const span = document.createElement("span");
-          span.className = "employer-name-highlight";
-          span.textContent = "[Employer Name]";
-          const remainingText = textNode.textContent?.split("[Employer Name]");
-          textNode.replaceWith(
-            remainingText?.[0] || "",
-            span,
-            remainingText?.[1] || ""
-          );
-        }
-        employerElement.scrollIntoView({ behavior: "smooth", block: "center" });
-      } else {
-        console.log("[Employer Name] not found in DOM yet.");
-      }
-    };
-
-    // Prevent events that might block selection
-    const enableSelection = (e: Event) => {
-      e.stopPropagation();
-    };
-
-    const container = document.querySelector(".employment-agreement-container");
-    if (container) {
-      container.addEventListener("mousedown", enableSelection);
-      container.addEventListener("selectstart", enableSelection);
-      container.addEventListener("dragstart", enableSelection);
-    }
-
-    // Run immediately and set up a MutationObserver in case the DOM changes
-    highlightEmployerName();
-
-    const observer = new MutationObserver(() => {
-      highlightEmployerName();
-    });
-
-    observer.observe(document.body, {
-      childList: true,
-      subtree: true,
-    });
-
-    return () => {
-      observer.disconnect();
-      if (container) {
-        container.removeEventListener("mousedown", enableSelection);
-        container.removeEventListener("selectstart", enableSelection);
-        container.removeEventListener("dragstart", enableSelection);
-      }
-    };
-  }, []);
-
   // Monitor text selection to detect when [Employer Name] is highlighted
   useEffect(() => {
     const handleSelection = () => {
@@ -301,14 +214,11 @@ const LevelTwoPart_Two = () => {
       const selectedText = selection?.toString().trim();
       if (selectedText === "[Employer Name]" && tourStep === 2) {
         setHasSelectedPlaceholder(true);
-        setSelectionAttempts(0); // Reset attempts on success
-      } else if (tourStep === 2) {
-        setSelectionAttempts((prev) => prev + 1);
       }
     };
 
-    document.addEventListener("selectionchange", handleSelection);
-    return () => document.removeEventListener("selectionchange", handleSelection);
+    document.addEventListener("mouseup", handleSelection);
+    return () => document.removeEventListener("mouseup", handleSelection);
   }, [tourStep]);
 
   const getDocumentText = () => {
@@ -522,28 +432,6 @@ const LevelTwoPart_Two = () => {
           : "bg-gradient-to-br from-indigo-50 via-teal-50 to-pink-50"
       }`}
     >
-      <style>
-        {`
-          .employment-agreement-container * {
-            user-select: text !important;
-            -webkit-user-select: text !important;
-            -moz-user-select: text !important;
-            -ms-user-select: text !important;
-            pointer-events: auto !important;
-          }
-          .employer-name-highlight {
-            background-color: #ffeb3b;
-            padding: 2px 4px;
-            border-radius: 3px;
-            user-select: text !important;
-            -webkit-user-select: text !important;
-            -moz-user-select: text !important;
-            -ms-user-select: text !important;
-            pointer-events: auto !important;
-            cursor: text !important;
-          }
-        `}
-      </style>
       <Navbar
         level={"/Level-Two-Part-Two"}
         questionnaire={"/Questionnaire"}
@@ -718,7 +606,7 @@ const LevelTwoPart_Two = () => {
       </div>
       <div className="max-w-5xl mx-auto mt-10 px-8 pb-20" ref={documentRef}>
         <div
-          className={`p-6 rounded-3xl shadow-xl border employment-agreement-container ${
+          className={`p-6 rounded-3xl shadow-xl border ${
             isDarkMode
               ? "bg-gray-800/80 backdrop-blur-md border-gray-700/20 bg-gradient-to-br from-gray-700/70 via-gray-800/70 to-gray-900/70"
               : "bg-white/80 backdrop-blur-md border-teal-100/20 bg-gradient-to-br from-teal-50/70 via-cyan-50/70 to-indigo-50/70"
@@ -751,7 +639,6 @@ const LevelTwoPart_Two = () => {
           onSkip={handleTourSkip}
           onComplete={handleTourComplete}
           isDarkMode={isDarkMode}
-          selectionFailed={selectionAttempts > 2}
         />
       )}
     </div>
