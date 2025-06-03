@@ -43,11 +43,11 @@ const AIAnalysisPanel: React.FC<AIAnalysisPanelProps> = ({
   const analyzeWithVertexAI = async () => {
     setIsLoading(true);
     try {
-      // Use a serverless function or direct API call to avoid CORS issues
-      // This is a simplified implementation using the same Google AI API
-      // but configured differently to simulate the Vertex AI approach
-      const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
-      // Use a different model or configuration to simulate Vertex AI
+      // Use the provided API key for Vertex AI
+      const vertexApiKey = "AIzaSyDWDCGtTYZc1atR91aUJq5OMFYrFyzIEpE";
+      const genAI = new GoogleGenerativeAI(vertexApiKey);
+
+      // Use a different model or configuration for the Vertex AI approach
       const model = genAI.getGenerativeModel({
         model: "gemini-2.0-pro",
         generationConfig: {
