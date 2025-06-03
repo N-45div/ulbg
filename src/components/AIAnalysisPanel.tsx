@@ -49,7 +49,7 @@ const AIAnalysisPanel: React.FC<AIAnalysisPanelProps> = ({
 
       // Use a different model or configuration for the Vertex AI approach
       const model = genAI.getGenerativeModel({
-        model: "gemini-2.0-pro",
+        model: "gemini-pro",
         generationConfig: {
           temperature: 1,
           topP: 0.95,
