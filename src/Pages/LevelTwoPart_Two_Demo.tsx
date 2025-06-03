@@ -2,7 +2,7 @@ import { FaPenToSquare } from "react-icons/fa6";
 import { TbSettingsMinus, TbSettingsPlus } from "react-icons/tb";
 import { ImLoop2 } from "react-icons/im";
 import { useState, useContext, useEffect, useRef, JSX } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import { useHighlightedText } from "../context/HighlightedTextContext";
 import { useQuestionType } from "../context/QuestionTypeContext";
@@ -13,65 +13,17 @@ import AIAnalysisPanel from "../components/AIAnalysisPanel";
 import Shepherd from "shepherd.js";
 import "shepherd.js/dist/css/shepherd.css";
 
-// Type definitions for Shepherd.js (since it may lack official types)
-interface ShepherdStep {
-  id: string;
-  text: string;
-  attachTo: { element: Element | string | null; on: string };
-  buttons: Array<{
-    text: string;
-    action: () => void;
-  }>;
-  classes?: string;
-}
-
-interface ShepherdTour {
-  start: () => void;
-  show: (stepId: string) => void;
-  next: () => void;
-  complete: () => void;
-  addStep: (step: ShepherdStep) => void;
-}
-
-interface ShepherdStatic {
-  Tour: new (options: {
-    defaultStepOptions: {
-      cancelIcon: { enabled: boolean };
-      classes: string;
-      scrollTo: { behavior: "smooth"; block: "center" };
-    };
-    useModalOverlay: boolean;
-    confirmCancel: boolean;
-    tourName: string;
-  }) => ShepherdTour;
-}
-
-const ShepherdStatic = Shepherd as unknown as ShepherdStatic;
-
-// Define interfaces for context types
-interface ThemeContextType {
-  isDarkMode: boolean;
-}
-
-interface HighlightedTextContextType {
-  highlightedTexts: string[];
-  addHighlightedText: (text: string) => void;
-}
-
-interface QuestionTypeContextType {
-  selectedTypes: string[];
-  setSelectedTypes: React.Dispatch<React.SetStateAction<string[]>>;
-}
-
-// Define interface for determineQuestionType return value
-interface QuestionTypeResult {
-  primaryValue?: string;
-}
-
-// Define the Icon type for the icons array
+// Define icon type for clarity
 interface Icon {
   icon: JSX.Element;
   label: string;
+}
+
+// Interface for highlighted element state
+interface HighlightedElement {
+  text: string;
+  type: "placeholder";
+  bgColor: string;
 }
 
 const icons: Icon[] = [
@@ -81,43 +33,94 @@ const icons: Icon[] = [
   { icon: <ImLoop2 />, label: "Loop" },
 ];
 
-
-
-const LevelTwoPart_Two_Demo: React.FC = () => {
+const LevelTwoPart_Two_Demo = () => {
   const location = useLocation();
-  const navigate = useNavigate();
-
-  // Safely access context with fallback values
-  const themeContext = useContext(ThemeContext) as ThemeContextType | undefined;
-  if (!themeContext) {
-    console.error("ThemeContext is not provided");
-  }
-  const isDarkMode = themeContext?.isDarkMode ?? false;
-
+  const { isDarkMode } = useContext(ThemeContext);
   const [tooltip, setTooltip] = useState<string | null>(null);
-
-  const highlightedTextContext = useHighlightedText() as HighlightedTextContextType | undefined;
-  if (!highlightedTextContext) {
-    console.error("HighlightedTextContext is not provided");
-  }
-  const highlightedTexts = highlightedTextContext?.highlightedTexts ?? [];
-  const addHighlightedText = highlightedTextContext?.addHighlightedText ?? (() => {});
-
-  const questionTypeContext = useQuestionType() as QuestionTypeContextType | undefined;
-  if (!questionTypeContext) {
-    console.error("QuestionTypeContext is not provided");
-  }
-  const selectedTypes = questionTypeContext?.selectedTypes ?? [];
-  const setSelectedTypes = questionTypeContext?.setSelectedTypes ?? (() => {});
-
+  const { highlightedTexts, addHighlightedText } = useHighlightedText();
+  const { selectedTypes, setSelectedTypes } = useQuestionType();
   const documentRef = useRef<HTMLDivElement>(null);
-  const tourRef = useRef<ShepherdTour | null>(null);
+
+  // Restore highlighted elements
+  useEffect(() => {
+    const savedHighlights = sessionStorage.getItem("highlightedElements");
+    if (savedHighlights && documentRef.current) {
+      try {
+        const highlightedElements: HighlightedElement[] = JSON.parse(savedHighlights);
+        console.log("Restoring highlighted elements:", highlightedElements);
+        highlightedElements.forEach(({ text, type, bgColor }) => {
+          if (type === "placeholder") {
+            const escapedText = text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+            const regex = new RegExp(`(${escapedText})`, "gi");
+            const walker = document.createTreeWalker(
+              documentRef.current!,
+              NodeFilter.SHOW_TEXT,
+              null
+            );
+            const textNodes: Text[] = [];
+            let node;
+            while ((node = walker.nextNode())) {
+              if (node.nodeType === Node.TEXT_NODE && node.textContent?.match(regex)) {
+                textNodes.push(node as Text);
+              }
+            }
+
+            console.log(`Found ${textNodes.length} text nodes for ${text}`);
+
+            textNodes.forEach((textNode) => {
+              const parent = textNode.parentElement;
+              if (parent && textNode.textContent) {
+                const parts = textNode.textContent.split(regex);
+                const fragment = document.createDocumentFragment();
+                parts.forEach((part, index) => {
+                  if (index % 2 === 1) {
+                    const span = document.createElement("span");
+                    span.style.backgroundColor = bgColor;
+                    span.textContent = part;
+                    fragment.appendChild(span);
+                  } else {
+                    fragment.appendChild(document.createTextNode(part));
+                  }
+                });
+                parent.replaceChild(fragment, textNode);
+              }
+            });
+          }
+        });
+      } catch (error) {
+        console.error("Error restoring highlighted elements:", error);
+      }
+    }
+  }, []); // Empty dependency array to run once on mount
+
+  // Save highlighted element to sessionStorage
+  const saveHighlightedElement = (
+    text: string,
+    type: "placeholder",
+    bgColor: string
+  ) => {
+    const savedHighlights = sessionStorage.getItem("highlightedElements");
+    let highlightedElements: HighlightedElement[] = [];
+    if (savedHighlights) {
+      try {
+        highlightedElements = JSON.parse(savedHighlights);
+      } catch (error) {
+        console.error("Error parsing highlighted elements:", error);
+      }
+    }
+    highlightedElements = highlightedElements.filter((el) => el.text !== text);
+    const newElement: HighlightedElement = { text, type, bgColor };
+    highlightedElements.push(newElement);
+    sessionStorage.setItem("highlightedElements", JSON.stringify(highlightedElements));
+    console.log("Saved highlighted element:", newElement);
+  };
 
   useEffect(() => {
     console.log("LevelTwoPart_Two_Demo - Rendering at:", location.pathname);
     sessionStorage.removeItem("level");
     sessionStorage.setItem("level", location.pathname);
 
+    // Initialize selectedTypes if not already set
     const savedTypes = sessionStorage.getItem("selectedQuestionTypes");
     if (!savedTypes && highlightedTexts.length > 0) {
       const initialTypes = highlightedTexts.map(() => "Text");
@@ -126,11 +129,11 @@ const LevelTwoPart_Two_Demo: React.FC = () => {
     }
   }, [location.pathname, highlightedTexts, setSelectedTypes]);
 
-  const getDocumentText = (): string => {
+  const getDocumentText = () => {
     return documentRef.current?.textContent || "";
   };
 
-  const handleIconClick = (label: string): void => {
+  const handleIconClick = (label: string) => {
     const selection = window.getSelection();
     if (!selection || !selection.rangeCount) return;
 
@@ -152,7 +155,7 @@ const LevelTwoPart_Two_Demo: React.FC = () => {
       hasValidBrackets = true;
     } else {
       const node = selection.anchorNode;
-      if (node?.parentElement) {
+      if (node && node.parentElement) {
         const parent = node.parentElement;
         const classList = Array.from(parent.classList);
         const placeholderClass = classList.find(cls => cls.startsWith("placeholder-"));
@@ -182,33 +185,25 @@ const LevelTwoPart_Two_Demo: React.FC = () => {
       addHighlightedText(textWithoutBrackets);
       console.log("Updated highlightedTexts after adding:", highlightedTexts);
 
+      // Update selectedTypes with default "Text" for new placeholder
       const newTypes = [...selectedTypes, "Text"];
       setSelectedTypes(newTypes);
       sessionStorage.setItem("selectedQuestionTypes", JSON.stringify(newTypes));
 
+      const bgColor = isDarkMode ? "rgba(255, 245, 157, 0.5)" : "rgba(255, 245, 157, 0.7)";
       const span = document.createElement("span");
-      span.style.backgroundColor = isDarkMode ? "rgba(255, 245, 157, 0.5)" : "rgba(255, 245, 157, 0.7)";
+      span.style.backgroundColor = bgColor;
       span.textContent = selectedText;
       range.deleteContents();
       range.insertNode(span);
-
-      const currentStep = sessionStorage.getItem("tourStep") || "welcome";
-      if (currentStep === "edit-placeholder-employer-name" && textWithoutBrackets === "Employer Name") {
-        sessionStorage.setItem("tourStep", "selected-placeholder-employer-name");
-        tourRef.current?.show("selected-placeholder-employer-name");
-      } else if (currentStep === "edit-placeholder-employee-name" && textWithoutBrackets === "Employee Name") {
-        sessionStorage.setItem("tourStep", "selected-placeholder-employee-name");
-        tourRef.current?.show("selected-placeholder-employee-name");
-      } else if (currentStep === "edit-placeholder-agreement-date" && textWithoutBrackets === "Agreement Date") {
-        sessionStorage.setItem("tourStep", "selected-placeholder-agreement-date");
-        tourRef.current?.show("selected-placeholder-agreement-date");
-      }
+      saveHighlightedElement(selectedText, "placeholder", bgColor);
     } else if (label === "Small Condition") {
       if (!(selectedText.startsWith("{") && selectedText.endsWith("}")) || 
           selectedText.length < 35 || 
           selectedText.length > 450) return;
       addHighlightedText(textWithoutBrackets);
 
+      // Update selectedTypes with default "Text" for new condition
       const newTypes = [...selectedTypes, "Text"];
       setSelectedTypes(newTypes);
       sessionStorage.setItem("selectedQuestionTypes", JSON.stringify(newTypes));
@@ -218,18 +213,12 @@ const LevelTwoPart_Two_Demo: React.FC = () => {
       span.textContent = selectedText;
       range.deleteContents();
       range.insertNode(span);
-
-      const currentStep = sessionStorage.getItem("tourStep") || "welcome";
-      if (currentStep === "small-condition-button") {
-        sessionStorage.setItem("tourStep", "selected-small-condition");
-        tourRef.current?.show("selected-small-condition");
-      }
     } else if (label === "Big Condition") {
       if (!(selectedText.startsWith("(") && selectedText.endsWith(")"))) return;
       console.log("Selected Big Condition:", selectedText);
 
       let clauseContent = textWithoutBrackets;
-      const headingsToStrip: string[] = ["PROBATIONARY PERIOD", "PENSION"];
+      const headingsToStrip = ["PROBATIONARY PERIOD", "PENSION"];
       for (const heading of headingsToStrip) {
         if (textWithoutBrackets.startsWith(heading)) {
           clauseContent = textWithoutBrackets.slice(heading.length).trim();
@@ -240,6 +229,7 @@ const LevelTwoPart_Two_Demo: React.FC = () => {
 
       addHighlightedText(clauseContent);
 
+      // Update selectedTypes with default "Text" for new condition
       const newTypes = [...selectedTypes, "Text"];
       setSelectedTypes(newTypes);
       sessionStorage.setItem("selectedQuestionTypes", JSON.stringify(newTypes));
@@ -247,11 +237,11 @@ const LevelTwoPart_Two_Demo: React.FC = () => {
       const fragment = document.createDocumentFragment();
       const contents = range.cloneContents();
 
-      const applyHighlight = (node: Node): Node | null => {
+      const applyHighlight = (node: Node) => {
         if (node.nodeType === Node.TEXT_NODE) {
           const span = document.createElement("span");
           span.style.backgroundColor = isDarkMode ? "rgba(186, 220, 88, 0.5)" : "rgba(186, 220, 88, 0.7)";
-          span.textContent = node.textContent ?? "";
+          span.textContent = node.textContent;
           return span;
         } else if (node.nodeType === Node.ELEMENT_NODE) {
           const element = node as HTMLElement;
@@ -269,7 +259,6 @@ const LevelTwoPart_Two_Demo: React.FC = () => {
         }
         return null;
       };
-
       contents.childNodes.forEach((node) => {
         const newNode = applyHighlight(node);
         if (newNode) {
@@ -283,7 +272,7 @@ const LevelTwoPart_Two_Demo: React.FC = () => {
       const probationClauseContent = "The first [Probation Period Length] of employment will be a probationary period. The Company shall assess the Employee’s performance and suitability during this time. Upon successful completion, the Employee will be confirmed in their role.";
       const pensionClauseContent = "The Employee will be enrolled in the Company’s pension scheme in accordance with auto-enrolment legislation.";
 
-      const normalizeText = (text: string): string => text.replace(/\s+/g, "");
+      const normalizeText = (text: string) => text.replace(/\s+/g, "");
       const normalizedSelectedText = normalizeText(textWithoutBrackets);
       const normalizedProbationClause = normalizeText(probationClauseContent);
       const normalizedPensionClause = normalizeText(pensionClauseContent);
@@ -294,18 +283,14 @@ const LevelTwoPart_Two_Demo: React.FC = () => {
       if (normalizedSelectedText === normalizedProbationClause) {
         console.log("Probation Clause matched, adding question instead of placeholder");
         addHighlightedText("Is the clause of probationary period applicable?");
+        // Add "Text" type for the additional question
         const newTypesWithQuestion = [...newTypes, "Text"];
         setSelectedTypes(newTypesWithQuestion);
         sessionStorage.setItem("selectedQuestionTypes", JSON.stringify(newTypesWithQuestion));
-
-        const currentStep = sessionStorage.getItem("tourStep") || "welcome";
-        if (currentStep === "big-condition-button") {
-          sessionStorage.setItem("tourStep", "selected-big-condition");
-          tourRef.current?.show("selected-big-condition");
-        }
       } else if (normalizedSelectedText === normalizedPensionClause) {
         console.log("Pension Clause matched, adding Pension question");
         addHighlightedText("Is the Pension clause applicable?");
+        // Add "Text" type for the additional question
         const newTypesWithQuestion = [...newTypes, "Text"];
         setSelectedTypes(newTypesWithQuestion);
         sessionStorage.setItem("selectedQuestionTypes", JSON.stringify(newTypesWithQuestion));
@@ -315,6 +300,7 @@ const LevelTwoPart_Two_Demo: React.FC = () => {
     } else if (label === "Loop") {
       addHighlightedText(textWithoutBrackets);
 
+      // Update selectedTypes with default "Text" for new loop
       const newTypes = [...selectedTypes, "Text"];
       setSelectedTypes(newTypes);
       sessionStorage.setItem("selectedQuestionTypes", JSON.stringify(newTypes));
@@ -327,29 +313,8 @@ const LevelTwoPart_Two_Demo: React.FC = () => {
     }
   };
 
-  const simulateEditPlaceholderClick = (): void => {
-    const editPlaceholderButton = document.querySelector("#edit-placeholder") as HTMLButtonElement | null;
-    if (editPlaceholderButton) {
-      editPlaceholderButton.click();
-    }
-  };
-
-  const simulateSmallConditionClick = (): void => {
-    const smallConditionButton = document.querySelector("#icon-small-condition") as HTMLButtonElement | null;
-    if (smallConditionButton) {
-      smallConditionButton.click();
-    }
-  };
-
-  const simulateBigConditionClick = (): void => {
-    const bigConditionButton = document.querySelector("#icon-big-condition") as HTMLButtonElement | null;
-    if (bigConditionButton) {
-      bigConditionButton.click();
-    }
-  };
-
   useEffect(() => {
-    const tour = new ShepherdStatic.Tour({
+    const tour = new Shepherd.Tour({
       defaultStepOptions: {
         cancelIcon: { enabled: true },
         classes: "shadow-md bg-purple-dark",
@@ -359,8 +324,6 @@ const LevelTwoPart_Two_Demo: React.FC = () => {
       confirmCancel: false,
       tourName: `level-two-part-two-demo-${Date.now()}`,
     });
-
-    tourRef.current = tour;
 
     tour.addStep({
       id: "welcome",
@@ -373,50 +336,33 @@ const LevelTwoPart_Two_Demo: React.FC = () => {
       `,
       attachTo: { element: document.body, on: "bottom-start" },
       classes: "shepherd-theme-custom animate__animated animate__fadeIn",
-      buttons: [
-        {
-          text: "Start Learning →",
-          action: () => {
-            sessionStorage.setItem("tourStep", "placeholders");
-            tour.next();
-          },
-        },
-      ],
+      buttons: [{ text: "Start Learning →", action: tour.next }],
     });
 
     tour.addStep({
       id: "placeholders",
-      text: "Behold your <strong>employment agreement!</strong> Notice those bits wrapped in square brackets, like <strong>[Employer Name]</strong>? Those are placeholders—your secret weapons for automation. Any text inside <strong>[square brackets]</strong> is a placeholder waiting to be customized.<br> Let's start with [Employer Name] by highlighting it and verifying your selection. Then, click on the 'Edit Placeholder' button to automate your placeholder.",
+      text: "Behold your <strong>employment agreement!</strong> Notice those bits wrapped in square brackets, like <strong> [Employer Name] </strong>? Those are placeholders—your secret weapons for automation. Any text inside <strong> [square brackets] </strong> is a placeholder waiting to be customized.<br> Let's start with [Employer Name] by highlighting it and verifying your selection. Then, click on the 'Edit Placeholder' button to automate your placeholder. Hurray! A placeholder has been created for you.",
       attachTo: { element: document.body, on: "bottom-start" },
-      buttons: [
-        {
-          text: "Next →",
-          action: () => {
-            sessionStorage.setItem("tourStep", "select-employer-name");
-            tour.next();
-          },
-        },
-      ],
+      buttons: [{ text: "Next →", action: tour.next }],
     });
 
     tour.addStep({
       id: "select-employer-name",
-      text: "Select <strong>[Employer Name]</strong> in the 'PARTIES' section (under 'Employer:') without spaces before or after the square brackets [].",
+      text: "Select [Employer Name] in the 'PARTIES' section (under 'Employer:') without spaces before or after the square brackets [].",
       attachTo: {
-        element: document.querySelector("#employer-name-placeholder") ?? document.body,
+        element: (document.querySelector("#employer-name-placeholder") as HTMLElement | null) || document.body,
         on: "bottom",
       },
       buttons: [
         {
           text: "Verify Selection ✅",
-          action: function (this: ShepherdTour) {
+          action: function () {
             const selection = window.getSelection();
             const selectedText = selection ? selection.toString().trim() : "";
             const employerNamePlaceholder = "[Employer Name]";
 
             if (selectedText === employerNamePlaceholder) {
-              sessionStorage.setItem("tourStep", "edit-placeholder-employer-name");
-              this.next();
+              tour.next();
             } else {
               alert("⚠️ Please select [Employer Name] exactly as shown in the 'PARTIES' section.");
             }
@@ -426,384 +372,28 @@ const LevelTwoPart_Two_Demo: React.FC = () => {
     });
 
     tour.addStep({
-      id: "edit-placeholder-employer-name",
-      text: "Now click on the <strong>Edit Placeholder</strong> button to automate [Employer Name].",
+      id: "edit-placeholder",
+      text: "Now click on the <strong> Edit Placeholder </strong> to make changes.",
       attachTo: { element: "#edit-placeholder", on: "bottom" },
-      buttons: [
-        {
-          text: "Next →",
-          action: () => {
-            simulateEditPlaceholderClick();
-          },
-        },
-      ],
+      buttons: [{ text: "Next →", action: tour.next }],
     });
 
     tour.addStep({
-      id: "selected-placeholder-employer-name",
-      text: "Your selected placeholder <strong>[Employer Name]</strong> is now visible here 📌 and ready for editing.",
+      id: "selected-placeholder",
+      text: "Your selected placeholder is now visible here 📌 and ready for editing.",
       attachTo: { element: "#selected-placeholder0", on: "bottom" },
-      buttons: [
-        {
-          text: "Next →",
-          action: () => {
-            sessionStorage.setItem("tourStep", "questionnaire-employer-name");
-            tour.next();
-          },
-        },
-      ],
+      buttons: [{ text: "Next →", action: tour.next }],
     });
 
     tour.addStep({
-      id: "questionnaire-employer-name",
-      text: "Now that you've selected the [Employer Name] placeholder, let's bring it to life. Head to the 'Questionnaire' page to draft a question for this placeholder. Click <strong>'Questionnaire'</strong> in the menu bar to proceed!",
+      id: "questionnaire",
+      text: "Now that you've selected the [Employer Name] placeholder. This is where the magic begins. To bring it to life, head to the 'Questionnaire' page. Click <strong> 'Questionnaire' </strong> in the menu bar which would take you to the page, and let's build the question that powers this placeholder!",
       attachTo: { element: "#Questionnaire-button", on: "right" },
-      buttons: [
-        {
-          text: "Go to Questionnaire →",
-          action: () => {
-            sessionStorage.setItem("tourStep", "return-from-questionnaire-employer-name");
-            tour.complete();
-            navigate("/Questionnaire");
-          },
-        },
-      ],
+      buttons: [{ text: "Done", action: tour.complete }],
     });
 
-    tour.addStep({
-      id: "return-from-questionnaire-employer-name",
-      text: "Great job! You successfully automated the <strong>[Employer Name]</strong> placeholder. Let's move on to the next placeholder.",
-      attachTo: { element: "#selected-placeholder0", on: "bottom" },
-      buttons: [
-        {
-          text: "Next →",
-          action: () => {
-            sessionStorage.setItem("tourStep", "introduce-employee-name");
-            tour.next();
-          },
-        },
-      ],
-    });
-
-    tour.addStep({
-      id: "introduce-employee-name",
-      text: "Next, let's automate another placeholder. Select <strong>[Employee Name]</strong> in the 'PARTIES' section (under 'Employee:') without spaces before or after the square brackets [].",
-      attachTo: {
-        element: document.querySelector("#employee-name-placeholder") ?? document.body,
-        on: "bottom",
-      },
-      buttons: [
-        {
-          text: "Verify Selection ✅",
-          action: function (this: ShepherdTour) {
-            const selection = window.getSelection();
-            const selectedText = selection ? selection.toString().trim() : "";
-            const employeeNamePlaceholder = "[Employee Name]";
-
-            if (selectedText === employeeNamePlaceholder) {
-              sessionStorage.setItem("tourStep", "edit-placeholder-employee-name");
-              this.next();
-            } else {
-              alert("⚠️ Please select [Employee Name] exactly as shown in the 'PARTIES' section.");
-            }
-          },
-        },
-      ],
-    });
-
-    tour.addStep({
-      id: "edit-placeholder-employee-name",
-      text: "Now click on the <strong>Edit Placeholder</strong> button to automate [Employee Name].",
-      attachTo: { element: "#edit-placeholder", on: "bottom" },
-      buttons: [
-        {
-          text: "Next →",
-          action: () => {
-            simulateEditPlaceholderClick();
-          },
-        },
-      ],
-    });
-
-    tour.addStep({
-      id: "selected-placeholder-employee-name",
-      text: "Your selected placeholder <strong>[Employee Name]</strong> is now visible here 📌 and ready for editing.",
-      attachTo: { element: "#selected-placeholder1", on: "bottom" },
-      buttons: [
-        {
-          text: "Next →",
-          action: () => {
-            sessionStorage.setItem("tourStep", "introduce-agreement-date");
-            tour.next();
-          },
-        },
-      ],
-    });
-
-    tour.addStep({
-      id: "introduce-agreement-date",
-      text: "Let's automate one more placeholder. Select <strong>[Agreement Date]</strong> in the 'PARTIES' section (at the end of the section) without spaces before or after the square brackets [].",
-      attachTo: {
-        element: document.querySelector("#agreement-date-placeholder") ?? document.body,
-        on: "bottom",
-      },
-      buttons: [
-        {
-          text: "Verify Selection ✅",
-          action: function (this: ShepherdTour) {
-            const selection = window.getSelection();
-            const selectedText = selection ? selection.toString().trim() : "";
-            const agreementDatePlaceholder = "[Agreement Date]";
-
-            if (selectedText === agreementDatePlaceholder) {
-              sessionStorage.setItem("tourStep", "edit-placeholder-agreement-date");
-              this.next();
-            } else {
-              alert("⚠️ Please select [Agreement Date] exactly as shown in the 'PARTIES' section.");
-            }
-          },
-        },
-      ],
-    });
-
-    tour.addStep({
-      id: "edit-placeholder-agreement-date",
-      text: "Now click on the <strong>Edit Placeholder</strong> button to automate [Agreement Date].",
-      attachTo: { element: "#edit-placeholder", on: "bottom" },
-      buttons: [
-        {
-          text: "Next →",
-          action: () => {
-            simulateEditPlaceholderClick();
-          },
-        },
-      ],
-    });
-
-    tour.addStep({
-      id: "selected-placeholder-agreement-date",
-      text: "Your selected placeholder <strong>[Agreement Date]</strong> is now visible here 📌 and ready for editing.",
-      attachTo: { element: "#selected-placeholder2", on: "bottom" },
-      buttons: [
-        {
-          text: "Next →",
-          action: () => {
-            sessionStorage.setItem("tourStep", "questionnaire-employee-name-agreement-date");
-            tour.next();
-          },
-        },
-      ],
-    });
-
-    tour.addStep({
-      id: "questionnaire-employee-name-agreement-date",
-      text: "You've selected <strong>[Employee Name]</strong> and <strong>[Agreement Date]</strong>. Let's draft questions for these placeholders. Head to the 'Questionnaire' page by clicking <strong>'Questionnaire'</strong> in the menu bar.",
-      attachTo: { element: "#Questionnaire-button", on: "right" },
-      buttons: [
-        {
-          text: "Go to Questionnaire →",
-          action: () => {
-            sessionStorage.setItem("tourStep", "return-from-questionnaire-employee-name-agreement-date");
-            tour.complete();
-            navigate("/Questionnaire");
-          },
-        },
-      ],
-    });
-
-    tour.addStep({
-      id: "return-from-questionnaire-employee-name-agreement-date",
-      text: "Great job! You successfully automated the placeholders <strong>[Employee Name]</strong> and <strong>[Agreement Date]</strong>! Let's move on to automating conditions.",
-      attachTo: { element: "#selected-placeholder2", on: "bottom" },
-      buttons: [
-        {
-          text: "Next →",
-          action: () => {
-            sessionStorage.setItem("tourStep", "introduce-small-condition");
-            tour.next();
-          },
-        },
-      ],
-    });
-
-    tour.addStep({
-      id: "introduce-small-condition",
-      text: "Now let's automate a small condition. Conditions wrapped in <strong>{curly braces}</strong> can be toggled on or off. Select <strong>{The Employee is entitled to overtime pay for authorized overtime work.}</strong> in the 'WORKING HOURS' section.",
-      attachTo: {
-        element: document.querySelector("#employment-agreement-working-hours") ?? document.body,
-        on: "bottom",
-      },
-      buttons: [
-        {
-          text: "Verify Selection ✅",
-          action: function (this: ShepherdTour) {
-            const selection = window.getSelection();
-            const selectedText = selection ? selection.toString().trim() : "";
-            const overtimePayClause = "{The Employee is entitled to overtime pay for authorized overtime work.}";
-
-            if (selectedText === overtimePayClause) {
-              sessionStorage.setItem("tourStep", "small-condition-button");
-              this.next();
-            } else {
-              alert("⚠️ Please select {The Employee is entitled to overtime pay for authorized overtime work.} exactly as shown in the 'WORKING HOURS' section.");
-            }
-          },
-        },
-      ],
-    });
-
-    tour.addStep({
-      id: "small-condition-button",
-      text: "Now click on the <strong>Small Condition</strong> button to automate this condition.",
-      attachTo: { element: "#icon-small-condition", on: "bottom" },
-      buttons: [
-        {
-          text: "Next →",
-          action: () => {
-            simulateSmallConditionClick();
-          },
-        },
-      ],
-    });
-
-    tour.addStep({
-      id: "selected-small-condition",
-      text: "Your selected condition <strong>{The Employee is entitled to overtime pay for authorized overtime work.}</strong> is now visible here 📌 and ready for editing.",
-      attachTo: { element: "#selected-placeholder3", on: "bottom" },
-      buttons: [
-        {
-          text: "Next →",
-          action: () => {
-            sessionStorage.setItem("tourStep", "questionnaire-small-condition");
-            tour.next();
-          },
-        },
-      ],
-    });
-
-    tour.addStep({
-      id: "questionnaire-small-condition",
-      text: "Let's draft a question for this condition. Head to the 'Questionnaire' page by clicking <strong>'Questionnaire'</strong> in the menu bar to create a question like 'Would the employee be entitled to overtime pay?'.",
-      attachTo: { element: "#Questionnaire-button", on: "right" },
-      buttons: [
-        {
-          text: "Go to Questionnaire →",
-          action: () => {
-            sessionStorage.setItem("tourStep", "return-from-questionnaire-small-condition");
-            tour.complete();
-            navigate("/Questionnaire");
-          },
-        },
-      ],
-    });
-
-    tour.addStep({
-      id: "return-from-questionnaire-small-condition",
-      text: "Good job automating the small condition <strong>{The Employee is entitled to overtime pay for authorized overtime work.}</strong>! Let's move on to a big condition.",
-      attachTo: { element: "#selected-placeholder3", on: "bottom" },
-      buttons: [
-        {
-          text: "Next →",
-          action: () => {
-            sessionStorage.setItem("tourStep", "introduce-big-condition");
-            tour.next();
-          },
-        },
-      ],
-    });
-
-    tour.addStep({
-      id: "introduce-big-condition",
-      text: "Now let's automate a big condition. Conditions wrapped in <strong>(parentheses)</strong> can include entire sections. Select the entire <strong>(PROBATIONARY PERIOD...)</strong> section, including the heading and paragraph, under the 'PROBATIONARY PERIOD' section.",
-      attachTo: {
-        element: document.querySelector("#employment-agreement-probationary-period") ?? document.body,
-        on: "bottom",
-      },
-      buttons: [
-        {
-          text: "Verify Selection ✅",
-          action: function (this: ShepherdTour) {
-            const selection = window.getSelection();
-            const selectedText = selection ? selection.toString().trim() : "";
-            const probationaryPeriodClauseStart = "(PROBATIONARY PERIOD";
-            const probationaryPeriodClauseEnd = "confirmed in their role.)";
-
-            if (selectedText.startsWith(probationaryPeriodClauseStart) && selectedText.endsWith(probationaryPeriodClauseEnd)) {
-              sessionStorage.setItem("tourStep", "big-condition-button");
-              this.next();
-            } else {
-              alert("⚠️ Please select the entire (PROBATIONARY PERIOD...) section, including the heading and paragraph.");
-            }
-          },
-        },
-      ],
-    });
-
-    tour.addStep({
-      id: "big-condition-button",
-      text: "Now click on the <strong>Big Condition</strong> button to automate this section.",
-      attachTo: { element: "#icon-big-condition", on: "bottom" },
-      buttons: [
-        {
-          text: "Next →",
-          action: () => {
-            simulateBigConditionClick();
-          },
-        },
-      ],
-    });
-
-    tour.addStep({
-      id: "selected-big-condition",
-      text: "Your selected condition <strong>(PROBATIONARY PERIOD...)</strong> is now visible here 📌. Notice that an additional question 'Is the clause of probationary period applicable?' has been automatically added.",
-      attachTo: { element: "#selected-placeholder4", on: "bottom" },
-      buttons: [
-        {
-          text: "Next →",
-          action: () => {
-            sessionStorage.setItem("tourStep", "questionnaire-big-condition");
-            tour.next();
-          },
-        },
-      ],
-    });
-
-    tour.addStep({
-      id: "questionnaire-big-condition",
-      text: "Let's draft a question for this condition. Head to the 'Questionnaire' page by clicking <strong>'Questionnaire'</strong> in the menu bar to create a question like 'Is the clause of probationary period included?'.",
-      attachTo: { element: "#Questionnaire-button", on: "right" },
-      buttons: [
-        {
-          text: "Go to Questionnaire →",
-          action: () => {
-            sessionStorage.setItem("tourStep", "return-from-questionnaire-big-condition");
-            tour.complete();
-            navigate("/Questionnaire");
-          },
-        },
-      ],
-    });
-
-    tour.addStep({
-      id: "return-from-questionnaire-big-condition",
-      text: "Well done! You've automated the complex condition <strong>(PROBATIONARY PERIOD...)</strong>. You've completed the automation tasks for Level 2 Part II Demo!",
-      attachTo: { element: "#selected-placeholder4", on: "bottom" },
-      buttons: [
-        {
-          text: "Finish →",
-          action: () => {
-            sessionStorage.removeItem("tourStep");
-            tour.complete();
-          },
-        },
-      ],
-    });
-
-    const initialTourStep = sessionStorage.getItem("tourStep") || "welcome";
-    if (initialTourStep) {
-      tour.start();
-      tour.show(initialTourStep);
-    }
+    tour.start();
+    window.history.replaceState({}, document.title, location.pathname);
 
     return () => {
       tour.complete();
@@ -819,9 +409,9 @@ const LevelTwoPart_Two_Demo: React.FC = () => {
       }`}
     >
       <Navbar
-        level="/Level-Two-Part-Two-Demo"
-        questionnaire="/Questionnaire"
-        live_generation="/Live_Generation"
+        level={"/Level-Two-Part-Two-Demo"}
+        questionnaire={"/Questionnaire"}
+        live_generation={"/Live_Generation"}
       />
       <div className="fixed flex top-16 right-0 z-50 px-6 py-3 space-x-6">
         {icons.map(({ icon, label }, index) => (
@@ -876,9 +466,8 @@ const LevelTwoPart_Two_Demo: React.FC = () => {
             }`}
           >
             {[...new Set(highlightedTexts)].map((text, index) => {
-              const result = determineQuestionType(text) as QuestionTypeResult;
-              const primaryValue = result?.primaryValue;
-              const questionType = selectedTypes[index] ?? "Text";
+              const { primaryValue } = determineQuestionType(text);
+              const questionType = selectedTypes[index] || "Text";
               return (
                 <li
                   id={`selected-placeholder${index}`}
@@ -898,7 +487,7 @@ const LevelTwoPart_Two_Demo: React.FC = () => {
                       ✓
                     </span>
                     <span className="text-sm font-medium truncate max-w-xs">
-                      {primaryValue ?? text}
+                      {primaryValue || text}
                     </span>
                   </div>
                   <span
@@ -966,3 +555,6 @@ const LevelTwoPart_Two_Demo: React.FC = () => {
 };
 
 export default LevelTwoPart_Two_Demo;
+
+
+// Sourabh code update for highlight placeholders in part 2 demo
