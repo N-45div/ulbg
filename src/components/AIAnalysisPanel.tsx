@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import firebaseApp from "../Pages/firebase";
 
 // Define types for the component props
 interface AIAnalysisPanelProps {
