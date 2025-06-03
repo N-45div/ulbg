@@ -47,9 +47,9 @@ const AIAnalysisPanel: React.FC<AIAnalysisPanelProps> = ({
       const vertexApiKey = "AIzaSyDWDCGtTYZc1atR91aUJq5OMFYrFyzIEpE";
       const genAI = new GoogleGenerativeAI(vertexApiKey);
 
-      // Use a different model or configuration for the Vertex AI approach
+      // Use a model that supports supervised fine-tuning according to Google Cloud docs
       const model = genAI.getGenerativeModel({
-        model: "gemini-pro",
+        model: "gemini-2.0-flash-001",
         generationConfig: {
           temperature: 1,
           topP: 0.95,
